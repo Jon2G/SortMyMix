@@ -5,6 +5,7 @@ Sort your Spotify playlists by **BPM** and **harmonic key** using the **Camelot 
 ![Vue 3](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)
 ![Vuestic UI](https://img.shields.io/badge/Vuestic_UI-1.10-154EC1)
+![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?logo=pwa)
 
 ## Features
 
@@ -12,6 +13,7 @@ Sort your Spotify playlists by **BPM** and **harmonic key** using the **Camelot 
 - **Harmonic Mixing** - Use the Camelot Wheel for seamless key-matched transitions
 - **Smart Preview** - See before/after comparison with harmonic score analysis
 - **Direct Spotify Integration** - Sort existing playlists without creating duplicates
+- **Progressive Web App** - Install on your device for offline access
 
 ## How It Works
 
@@ -72,6 +74,26 @@ npm run build
 npm run preview
 ```
 
+## PWA Features
+
+SortMyMix is a Progressive Web App with the following capabilities:
+
+- **Installable** - Add to home screen on mobile or desktop
+- **Offline Support** - Core app works without internet
+- **Caching** - Spotify album artwork is cached for faster loading
+- **Auto Updates** - Service worker updates automatically
+
+### Generating PNG Icons (Optional)
+
+For better browser compatibility, you can generate PNG icons:
+
+```bash
+npm install -D sharp
+node scripts/generate-icons.js
+```
+
+Then update `vite.config.ts` to use PNG icons in the manifest.
+
 ## Deployment
 
 This project is configured for GitHub Pages deployment:
@@ -95,6 +117,7 @@ npm run build
 - **Pinia** for state management
 - **Vue Router** for navigation
 - **Vite** for blazing fast builds
+- **vite-plugin-pwa** for PWA support
 
 ## The Camelot Wheel
 
