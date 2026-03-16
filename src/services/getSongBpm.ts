@@ -69,7 +69,7 @@ export async function searchGetSongBpm(
 
     const first = data.search?.[0]
     if (!first) {
-      console.error('[GetSongBPM] No results found')
+      console.error('[GetSongBPM] No results found', searchTitle, artist)
       return null
     }
 

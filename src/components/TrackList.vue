@@ -135,33 +135,25 @@ function camelotFromFeatures(features: TrackWithFeatures['features']): string {
                 <span v-if="isCustomTrack(item.track.id)" class="custom-badge">CUSTOM</span>
               </div>
             </div>
-            <span class="col-bpm editable-cell" @dblclick="!isLoadingTrack(item.track.id) && startEditBpm(item.track.id)">
+            <span class="col-bpm editable-cell"
+              @dblclick="!isLoadingTrack(item.track.id) && startEditBpm(item.track.id)">
               <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-bpm" />
               <template v-else-if="editingBpm === item.track.id">
-                <input
-                  ref="bpmInputRef"
-                  type="number"
-                  :value="item.features?.tempo ?? ''"
-                  min="1"
-                  max="299"
+                <input ref="bpmInputRef" type="number" :value="item.features?.tempo ?? ''" min="1" max="299"
                   class="edit-input edit-bpm"
                   @blur="saveBpmEdit(item.track.id, ($event.target as HTMLInputElement).value)"
                   @keydown.enter="saveBpmEdit(item.track.id, ($event.target as HTMLInputElement).value); ($event.target as HTMLInputElement).blur()"
-                  @keydown.escape="editingBpm = null"
-                />
+                  @keydown.escape="editingBpm = null" />
               </template>
               <template v-else>{{ formatBpm(item.features?.tempo) }}</template>
             </span>
-            <span class="col-key editable-cell" @dblclick="!isLoadingTrack(item.track.id) && startEditKey(item.track.id)">
+            <span class="col-key editable-cell"
+              @dblclick="!isLoadingTrack(item.track.id) && startEditKey(item.track.id)">
               <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-key" />
               <template v-else-if="editingKey === item.track.id">
-                <select
-                  :value="camelotFromFeatures(item.features)"
-                  class="edit-input edit-key"
+                <select :value="camelotFromFeatures(item.features)" class="edit-input edit-key"
                   @change="saveKeyEdit(item.track.id, ($event.target as HTMLSelectElement).value); editingKey = null"
-                  @blur="editingKey = null"
-                  @keydown.escape="editingKey = null"
-                >
+                  @blur="editingKey = null" @keydown.escape="editingKey = null">
                   <option value="—">—</option>
                   <option v-for="opt in CAMELOT_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
@@ -176,8 +168,8 @@ function camelotFromFeatures(features: TrackWithFeatures['features']): string {
       </draggable>
 
       <template v-else>
-        <div v-for="(item, index) in tracks" :key="item.track.id + '-' + index"
-          class="track-row" :class="{ 'has-custom': isCustomTrack(item.track.id) }">
+        <div v-for="(item, index) in tracks" :key="item.track.id + '-' + index" class="track-row"
+          :class="{ 'has-custom': isCustomTrack(item.track.id) }">
           <span class="col-num">{{ showPosition ? item.position + 1 : index + 1 }}</span>
           <div class="col-title">
             <img v-if="albumImage(item)" :src="albumImage(item)" :alt="item.track.album.name" class="track-image"
@@ -194,29 +186,19 @@ function camelotFromFeatures(features: TrackWithFeatures['features']): string {
           <span class="col-bpm editable-cell" @dblclick="!isLoadingTrack(item.track.id) && startEditBpm(item.track.id)">
             <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-bpm" />
             <template v-else-if="editingBpm === item.track.id">
-              <input
-                type="number"
-                :value="item.features?.tempo ?? ''"
-                min="1"
-                max="299"
-                class="edit-input edit-bpm"
+              <input type="number" :value="item.features?.tempo ?? ''" min="1" max="299" class="edit-input edit-bpm"
                 @blur="saveBpmEdit(item.track.id, ($event.target as HTMLInputElement).value)"
                 @keydown.enter="saveBpmEdit(item.track.id, ($event.target as HTMLInputElement).value); ($event.target as HTMLInputElement).blur()"
-                @keydown.escape="editingBpm = null"
-              />
+                @keydown.escape="editingBpm = null" />
             </template>
             <template v-else>{{ formatBpm(item.features?.tempo) }}</template>
           </span>
           <span class="col-key editable-cell" @dblclick="!isLoadingTrack(item.track.id) && startEditKey(item.track.id)">
             <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-key" />
             <template v-else-if="editingKey === item.track.id">
-              <select
-                :value="camelotFromFeatures(item.features)"
-                class="edit-input edit-key"
+              <select :value="camelotFromFeatures(item.features)" class="edit-input edit-key"
                 @change="saveKeyEdit(item.track.id, ($event.target as HTMLSelectElement).value); editingKey = null"
-                @blur="editingKey = null"
-                @keydown.escape="editingKey = null"
-              >
+                @blur="editingKey = null" @keydown.escape="editingKey = null">
                 <option value="—">—</option>
                 <option v-for="opt in CAMELOT_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
               </select>
@@ -296,6 +278,7 @@ function camelotFromFeatures(features: TrackWithFeatures['features']): string {
   color: var(--color-text-muted);
   font-size: 0.875rem;
   text-align: center;
+  margin: auto;
 }
 
 .col-title {
@@ -367,6 +350,7 @@ function camelotFromFeatures(features: TrackWithFeatures['features']): string {
 .custom-badge {
   display: inline-block;
   margin-left: 6px;
+  width: max-content;
   padding: 2px 6px;
   font-size: 0.625rem;
   font-weight: 700;
