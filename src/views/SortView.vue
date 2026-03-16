@@ -6,6 +6,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import TrackList from '@/components/TrackList.vue'
 import SortPreview from '@/components/SortPreview.vue'
 import { spotifyApi } from '@/services/spotify'
+import { estimateBpmForTracks } from '@/services/bpmEstimation'
 import { useSorting } from '@/composables/useSorting'
 import { spotifyToCamelot, camelotToString } from '@/services/camelot'
 import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack, SpotifyAudioFeatures } from '@/types/spotify'
@@ -24,6 +25,7 @@ const isLoading = ref(true)
 const isSorting = ref(false)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
+const estimationProgress = ref<{ done: number; total: number } | null>(null)
 const activeTab = ref(0)
 const hasSorted = ref(false)
 
@@ -59,7 +61,7 @@ async function loadPlaylistData() {
     
     const trackIds = validTracks.map(t => t.track.id)
     
-    // Load audio features
+    // Load audio features (returns nulls when API returns 403 in Dev Mode)
     const audioFeatures = await spotifyApi.getAudioFeatures(trackIds)
     
     // Create a map of track ID to audio features
@@ -68,13 +70,30 @@ async function loadPlaylistData() {
       featuresMap.set(id, audioFeatures[index])
     })
     
+    // Fallback: estimate BPM from preview URLs when API unavailable
+    const hasAnyFeatures = audioFeatures.some(f => f !== null)
+    if (!hasAnyFeatures) {
+      const withPreview = validTracks.map(t => ({
+        id: t.track.id,
+        preview_url: t.track.preview_url
+      }))
+      estimationProgress.value = { done: 0, total: withPreview.length }
+      const estimated = await estimateBpmForTracks(withPreview, (done, total) => {
+        estimationProgress.value = { done, total }
+      })
+      estimationProgress.value = null
+      estimated.forEach((features, id) => {
+        if (features) featuresMap.set(id, features)
+      })
+    }
+    
     // Combine tracks with their features
     originalTracks.value = validTracks.map((t, index) => {
       const features = featuresMap.get(t.track.id) || null
       return {
         track: t.track,
         features,
-        camelotKey: features 
+        camelotKey: features && features.key >= 0
           ? camelotToString(spotifyToCamelot(features.key, features.mode))
           : null,
         position: index
@@ -156,8 +175,16 @@ watch(playlistId, () => {
         </button>
         
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle indeterminate size="large" color="primary" />
-          <p>Loading playlist tracks...</p>
+          <VaProgressCircle 
+            :indeterminate="!estimationProgress" 
+            :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
+            size="large" 
+            color="primary" 
+          />
+          <p v-if="estimationProgress">
+            Estimating BPM from previews... {{ estimationProgress.done }}/{{ estimationProgress.total }}
+          </p>
+          <p v-else>Loading playlist tracks...</p>
         </div>
         
         <div v-else-if="error" class="error-state">
@@ -235,7 +262,7 @@ watch(playlistId, () => {
           />
           
           <div class="tracks-section">
-            <VaTabs v-model="activeTab" class="tracks-tabs" grow>
+            <VaTabs v-model="activeTab" class="tracks-tabs" center>
               <VaTab>Original Order</VaTab>
               <VaTab :disabled="!hasSorted">Sorted Order</VaTab>
             </VaTabs>
@@ -243,6 +270,8 @@ watch(playlistId, () => {
             <TrackList 
               :tracks="displayTracks" 
               :show-position="activeTab === 0"
+              :draggable="activeTab === 1"
+              @reorder="sortedTracks = $event"
             />
           </div>
         </template>
@@ -407,8 +436,7 @@ watch(playlistId, () => {
 }
 
 .tracks-tabs :deep(.va-tab) {
-  flex: 1;
-  justify-content: center;
+  flex: 0 1 auto;
 }
 
 @media (max-width: 768px) {

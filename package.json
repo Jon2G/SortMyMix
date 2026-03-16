@@ -15,7 +15,9 @@
     "pinia": "^3.0.4",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4",
-    "vuestic-ui": "^1.10.3"
+    "vuedraggable": "^4.1.0",
+    "vuestic-ui": "^1.10.3",
+    "web-audio-beat-detector": "^8.2.35"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
