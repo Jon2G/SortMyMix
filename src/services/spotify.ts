@@ -77,7 +77,7 @@ class SpotifyApiService {
   ): Promise<SpotifyPaginatedResponse<SpotifyPlaylistTrack>> {
     // Feb 2026: /tracks deprecated, use /items; response uses item not track
     const raw = await this.request<SpotifyPaginatedResponse<SpotifyPlaylistTrackRaw>>(
-      `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}&fields=items(added_at,item(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
+      `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}&market=from_token&fields=items(added_at,item(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
     )
     // Normalize item → track (Feb 2026 rename); support both for compatibility
     return {
