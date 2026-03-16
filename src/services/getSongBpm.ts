@@ -7,7 +7,7 @@ import { GETSONGBPM_CONFIG } from '@/config/getSongBpm'
 import { camelotToSpotify } from '@/services/camelot'
 import { stripTrackTitleForSearch } from '@/services/trackTitle'
 
-/** Rate limit: 3000 req/hour → ~1.2s between requests */
+/** Rate limit: GetSongBPM 3000 req/hour → ~1.2s between requests */
 export const GETSONGBPM_MS_DELAY = 1200
 
 interface GetSongBpmSearchResult {
@@ -49,7 +49,8 @@ export async function searchGetSongBpm(
     limit: '1',
     api_key: GETSONGBPM_CONFIG.apiKey
   })
-  const url = `${GETSONGBPM_CONFIG.baseUrl}/search/?${params.toString()}`
+  const targetUrl = `${GETSONGBPM_CONFIG.baseUrl}/search/?${params.toString()}`
+  const url = `https://corsproxy.io/?${new URLSearchParams({ url: targetUrl }).toString()}`
 
   try {
     const res = await fetch(url)
