@@ -158,8 +158,8 @@ export function useSorting() {
       .map(t => t.features?.tempo ?? 0)
       .filter(bpm => bpm > 0)
     
-    const minBpm = Math.min(...bpms)
-    const maxBpm = Math.max(...bpms)
+    const minBpm = bpms.length > 0 ? Math.min(...bpms) : 0
+    const maxBpm = bpms.length > 0 ? Math.max(...bpms) : 0
     
     return {
       totalTracks: sorted.length,

@@ -110,7 +110,6 @@ class SpotifyApiService {
   async getAudioFeatures(trackIds: string[]): Promise<(SpotifyAudioFeatures | null)[]> {
     if (trackIds.length === 0) return []
     
-    // Try batch first (works in Extended Quota Mode), fall back to single requests (Dev Mode)
     try {
       const batchSize = 100
       const results: (SpotifyAudioFeatures | null)[] = []
@@ -123,19 +122,9 @@ class SpotifyApiService {
       }
       return results
     } catch {
-      // Feb 2026: Batch returns 403 in Dev Mode; use single endpoint per track
-      const CONCURRENCY = 5
-      const results: (SpotifyAudioFeatures | null)[] = []
-      for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
-        const batch = trackIds.slice(i, i + CONCURRENCY)
-        const batchResults = await Promise.all(
-          batch.map(id =>
-            this.request<SpotifyAudioFeatures>(`/audio-features/${id}`).catch(() => null)
-          )
-        )
-        results.push(...batchResults)
-      }
-      return results
+      // Feb 2026: Both batch and single /audio-features return 403 in Dev Mode.
+      // Return nulls so app still works; sorting will preserve original order.
+      return trackIds.map(() => null)
     }
   }
 

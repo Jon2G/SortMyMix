@@ -32,6 +32,10 @@ const sortStats = computed(() => {
   return calculateSortStats(originalTracks.value, sortedTracks.value)
 })
 
+const hasAudioFeatures = computed(() =>
+  originalTracks.value.some(t => t.features !== null)
+)
+
 const displayTracks = computed(() => {
   return activeTab.value === 0 ? originalTracks.value : sortedTracks.value
 })
@@ -190,7 +194,7 @@ watch(playlistId, () => {
                   color="primary" 
                   size="large"
                   :loading="isSorting"
-                  :disabled="isSorting || isSaving"
+                  :disabled="isSorting || isSaving || !hasAudioFeatures"
                   @click="performSort"
                 >
                   <VaIcon name="sort" class="btn-icon" />
@@ -212,8 +216,20 @@ watch(playlistId, () => {
             </div>
           </div>
           
+          <div 
+            v-if="!hasAudioFeatures && originalTracks.length > 0"
+            class="features-unavailable-banner"
+            role="alert"
+          >
+            <VaIcon name="info" />
+            <p>
+              BPM and key data unavailable. The audio-features API is restricted in Spotify Development Mode.
+              <a href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes" target="_blank" rel="noopener">Apply for Extended Quota Mode</a> for full access.
+            </p>
+          </div>
+          
           <SortPreview 
-            v-if="sortStats" 
+            v-if="sortStats && hasAudioFeatures" 
             :stats="sortStats" 
             class="sort-stats"
           />
@@ -346,6 +362,33 @@ watch(playlistId, () => {
 
 .btn-icon {
   margin-right: 8px;
+}
+
+.features-unavailable-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  background: rgba(29, 185, 84, 0.1);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.features-unavailable-banner .va-icon {
+  flex-shrink: 0;
+  color: var(--color-spotify-green);
+}
+
+.features-unavailable-banner a {
+  color: var(--color-spotify-green);
+  text-decoration: underline;
+}
+
+.features-unavailable-banner a:hover {
+  opacity: 0.9;
 }
 
 .sort-stats {
