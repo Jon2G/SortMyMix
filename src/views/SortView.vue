@@ -106,7 +106,10 @@ async function loadPlaylistData() {
 
   } catch (err) {
     console.error('Failed to load playlist:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to load playlist'
+    const msg = err instanceof Error ? err.message : 'Failed to load playlist'
+    error.value = msg.includes('403') || msg.includes('Forbidden')
+      ? 'Cannot load playlist tracks. The playlist may be restricted, or your app may need Extended Quota Mode.'
+      : msg
   } finally {
     isLoading.value = false
   }
@@ -150,6 +153,12 @@ async function saveSort() {
   } finally {
     isSaving.value = false
   }
+}
+
+function resetToOriginal() {
+  sortedTracks.value = originalTracks.value.map((t, i) => ({ ...t, position: i }))
+  hasSorted.value = false
+  activeTab.value = 0
 }
 
 function goBack() {
@@ -223,17 +232,24 @@ watch(playlistId, () => {
                   <VaIcon name="save" class="btn-icon" />
                   Apply to Spotify
                 </VaButton>
+                <VaButton v-if="hasSorted" preset="plain" size="large"
+                  :disabled="isSorting || isSaving" @click="resetToOriginal">
+                  <VaIcon name="refresh" class="btn-icon" />
+                  Reset to Original
+                </VaButton>
               </div>
             </div>
           </div>
 
-          <div v-if="tracksWithPreviewCount === 0 && originalTracks.length > 0" class="features-unavailable-banner" role="alert">
+          <div v-if="tracksWithPreviewCount === 0 && originalTracks.length > 0" class="features-unavailable-banner"
+            role="alert">
             <VaIcon name="info" />
             <p>
               No preview URLs available for any track in this playlist. BPM cannot be estimated.
             </p>
           </div>
-          <div v-else-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner" role="alert">
+          <div v-else-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner"
+            role="alert">
             <VaIcon name="info" />
             <p>
               BPM and key data unavailable for tracks without preview URLs.
@@ -244,32 +260,17 @@ watch(playlistId, () => {
 
           <div class="tracks-section">
             <div class="tracks-tabs">
-              <button
-                type="button"
-                class="tab-btn"
-                :class="{ active: activeTab === 0 }"
-                @click="activeTab = 0"
-              >
+              <button type="button" class="tab-btn" :class="{ active: activeTab === 0 }" @click="activeTab = 0">
                 Original Order
               </button>
-              <button
-                type="button"
-                class="tab-btn"
-                :class="{ active: activeTab === 1 }"
-                :disabled="!hasSorted"
-                @click="hasSorted && (activeTab = 1)"
-              >
+              <button type="button" class="tab-btn" :class="{ active: activeTab === 1 }" :disabled="!hasSorted"
+                @click="hasSorted && (activeTab = 1)">
                 Sorted Order
               </button>
             </div>
 
-            <TrackList
-              :key="'tab-' + activeTab"
-              :tracks="displayTracks"
-              :show-position="activeTab === 0"
-              :draggable="isDraggable"
-              @reorder="sortedTracks = $event"
-            />
+            <TrackList :key="'tab-' + activeTab" :tracks="displayTracks" :show-position="activeTab === 0"
+              :draggable="isDraggable" @reorder="sortedTracks = $event" />
           </div>
         </template>
       </div>

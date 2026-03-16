@@ -76,16 +76,24 @@ class SpotifyApiService {
     offset = 0
   ): Promise<SpotifyPaginatedResponse<SpotifyPlaylistTrack>> {
     // Feb 2026: /tracks deprecated, use /items; response uses item not track
-    const raw = await this.request<SpotifyPaginatedResponse<SpotifyPlaylistTrackRaw>>(
-      `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}&market=from_token&fields=items(added_at,item(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
-    )
-    // Normalize item → track (Feb 2026 rename); support both for compatibility
-    return {
-      ...raw,
-      items: raw.items.map(({ added_at, item, track }) => ({
-        added_at,
-        track: item ?? track ?? null
-      }))
+    try {
+      const raw = await this.request<SpotifyPaginatedResponse<SpotifyPlaylistTrackRaw>>(
+        `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}&market=from_token&fields=items(added_at,item(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
+      )
+      // Normalize item → track (Feb 2026 rename); support both for compatibility
+      return {
+        ...raw,
+        items: raw.items.map(({ added_at, item, track }) => ({
+          added_at,
+          track: item ?? track ?? null
+        }))
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('403') || msg.includes('Forbidden')) {
+        throw new Error('Forbidden: Cannot access playlist tracks. Ensure you own or collaborate on this playlist.')
+      }
+      throw err
     }
   }
 
@@ -109,23 +117,29 @@ class SpotifyApiService {
   /**
    * Fetch full track details including preview_url.
    * Playlist items return simplified tracks without preview_url; this endpoint returns full Track objects.
+   * Returns empty map on 403 (GET /tracks restricted in Development Mode per Feb 2026 migration).
    */
   async getTracks(trackIds: string[]): Promise<Map<string, { preview_url: string | null }>> {
     const result = new Map<string, { preview_url: string | null }>()
     if (trackIds.length === 0) return result
 
-    const batchSize = 50
-    for (let i = 0; i < trackIds.length; i += batchSize) {
-      const batch = trackIds.slice(i, i + batchSize)
-      const response = await this.request<{ tracks: Array<{ id: string; preview_url: string | null } | null> }>(
-        `/tracks?ids=${batch.join(',')}&market=from_token`
-      )
-      response.tracks.forEach((track, idx) => {
-        const id = batch[idx]
-        if (track && id) {
-          result.set(id, { preview_url: track.preview_url })
-        }
-      })
+    try {
+      const batchSize = 50
+      for (let i = 0; i < trackIds.length; i += batchSize) {
+        const batch = trackIds.slice(i, i + batchSize)
+        const response = await this.request<{ tracks: Array<{ id: string; preview_url: string | null } | null> }>(
+          `/tracks?ids=${batch.join(',')}&market=from_token`
+        )
+        response.tracks.forEach((track, idx) => {
+          const id = batch[idx]
+          if (track && id) {
+            result.set(id, { preview_url: track.preview_url })
+          }
+        })
+      }
+    } catch (err) {
+      // GET /tracks returns 403 in Development Mode (batch endpoint removed Feb 2026)
+      console.warn('[Spotify] getTracks unavailable (403 in Dev Mode):', err)
     }
     return result
   }
