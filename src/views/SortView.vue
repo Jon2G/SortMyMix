@@ -45,20 +45,20 @@ const displayTracks = computed(() => {
 async function loadPlaylistData() {
   isLoading.value = true
   error.value = null
-  
+
   try {
     // Load playlist info
     playlist.value = await spotifyApi.getPlaylist(playlistId.value)
-    
+
     // Load all tracks
     const playlistTracks = await spotifyApi.getAllPlaylistTracks(playlistId.value)
-    
+
     // Filter out null tracks and get track IDs
     const validTracks = playlistTracks.filter(
-      (t): t is SpotifyPlaylistTrack & { track: NonNullable<SpotifyPlaylistTrack['track']> } => 
+      (t): t is SpotifyPlaylistTrack & { track: NonNullable<SpotifyPlaylistTrack['track']> } =>
         t.track !== null
     )
-    
+
     // Estimate BPM from preview URLs (audio-features API not used)
     const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
     const withPreview = validTracks.map(t => ({
@@ -73,7 +73,7 @@ async function loadPlaylistData() {
     estimated.forEach((features, id) => {
       if (features) featuresMap.set(id, features)
     })
-    
+
     // Combine tracks with their features
     originalTracks.value = validTracks.map((t, index) => {
       const features = featuresMap.get(t.track.id) || null
@@ -86,9 +86,9 @@ async function loadPlaylistData() {
         position: index
       }
     })
-    
+
     sortedTracks.value = [...originalTracks.value]
-    
+
   } catch (err) {
     console.error('Failed to load playlist:', err)
     error.value = err instanceof Error ? err.message : 'Failed to load playlist'
@@ -99,7 +99,7 @@ async function loadPlaylistData() {
 
 function performSort() {
   isSorting.value = true
-  
+
   // Use setTimeout to allow UI to update
   setTimeout(() => {
     sortedTracks.value = sortByBpmThenHarmonic(originalTracks.value)
@@ -111,22 +111,22 @@ function performSort() {
 
 async function saveSort() {
   if (!playlist.value || sortedTracks.value.length === 0) return
-  
+
   isSaving.value = true
   error.value = null
-  
+
   try {
     const originalUris = originalTracks.value.map(t => t.track.uri)
     const sortedUris = sortedTracks.value.map(t => t.track.uri)
-    
+
     await spotifyApi.reorderPlaylistToMatch(playlistId.value, originalUris, sortedUris)
-    
+
     // Update original tracks to match sorted order
     originalTracks.value = sortedTracks.value.map((t, i) => ({ ...t, position: i }))
-    
+
     // Show success (could use a toast notification)
     alert('Playlist sorted successfully!')
-    
+
     // Navigate back to playlists
     router.push({ name: 'playlists' })
   } catch (err) {
@@ -153,27 +153,24 @@ watch(playlistId, () => {
 <template>
   <div class="sort-page">
     <AppHeader />
-    
+
     <main class="main-content">
       <div class="container">
         <button class="back-button" @click="goBack">
           <VaIcon name="arrow_back" />
           <span>Back to Playlists</span>
         </button>
-        
+
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle 
-            :indeterminate="!estimationProgress" 
+          <VaProgressCircle :indeterminate="!estimationProgress"
             :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
-            size="large" 
-            color="primary" 
-          />
+            size="large" color="primary" />
           <p v-if="estimationProgress">
             Estimating BPM from previews... {{ estimationProgress.done }}/{{ estimationProgress.total }}
           </p>
           <p v-else>Loading playlist tracks...</p>
         </div>
-        
+
         <div v-else-if="error" class="error-state">
           <VaIcon name="error_outline" class="error-icon" />
           <p>{{ error }}</p>
@@ -181,19 +178,15 @@ watch(playlistId, () => {
             Try Again
           </VaButton>
         </div>
-        
+
         <template v-else-if="playlist">
           <div class="playlist-header">
-            <img 
-              v-if="playlist.images?.[0]?.url"
-              :src="playlist.images[0].url" 
-              :alt="playlist.name"
-              class="playlist-cover"
-            />
+            <img v-if="playlist.images?.[0]?.url" :src="playlist.images[0].url" :alt="playlist.name"
+              class="playlist-cover" />
             <div v-else class="playlist-cover-placeholder">
               <VaIcon name="music_note" />
             </div>
-            
+
             <div class="playlist-info">
               <h1 class="playlist-name">{{ playlist.name }}</h1>
               <p class="playlist-meta">
@@ -202,63 +195,40 @@ watch(playlistId, () => {
                   &middot; by {{ playlist.owner.display_name }}
                 </span>
               </p>
-              
+
               <div class="playlist-actions">
-                <VaButton 
-                  color="primary" 
-                  size="large"
-                  :loading="isSorting"
-                  :disabled="isSorting || isSaving || !hasAudioFeatures"
-                  @click="performSort"
-                >
+                <VaButton color="primary" size="large" :loading="isSorting"
+                  :disabled="isSorting || isSaving || originalTracks.length === 0" @click="performSort">
                   <VaIcon name="sort" class="btn-icon" />
                   {{ hasSorted ? 'Re-Sort Playlist' : 'Sort Playlist' }}
                 </VaButton>
-                
-                <VaButton 
-                  v-if="hasSorted"
-                  preset="secondary"
-                  size="large"
-                  :loading="isSaving"
-                  :disabled="isSorting || isSaving"
-                  @click="saveSort"
-                >
+
+                <VaButton v-if="hasSorted" preset="secondary" size="large" :loading="isSaving"
+                  :disabled="isSorting || isSaving" @click="saveSort">
                   <VaIcon name="save" class="btn-icon" />
                   Apply to Spotify
                 </VaButton>
               </div>
             </div>
           </div>
-          
-          <div 
-            v-if="!hasAudioFeatures && originalTracks.length > 0"
-            class="features-unavailable-banner"
-            role="alert"
-          >
+
+          <div v-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner" role="alert">
             <VaIcon name="info" />
             <p>
               BPM and key data unavailable for tracks without preview URLs.
             </p>
           </div>
-          
-          <SortPreview 
-            v-if="sortStats && hasAudioFeatures" 
-            :stats="sortStats" 
-            class="sort-stats"
-          />
-          
+
+          <SortPreview v-if="sortStats && hasAudioFeatures" :stats="sortStats" class="sort-stats" />
+
           <div class="tracks-section">
             <VaTabs v-model="activeTab" class="tracks-tabs" grow>
-              <VaTab>Original Order</VaTab>
-              <VaTab :disabled="!hasSorted">Sorted Order</VaTab>
+              <VaTab>Original</VaTab>
+              <VaTab :disabled="!hasSorted">Order</VaTab>
             </VaTabs>
-            
-            <TrackList 
-              :tracks="displayTracks" 
-              :show-position="activeTab === 0"
-              :draggable="activeTab === 1"
-              @reorder="sortedTracks = $event"
-            />
+
+            <TrackList :tracks="displayTracks" :show-position="activeTab === 0"
+              :draggable="activeTab === 1 && hasSorted" @reorder="sortedTracks = $event" />
           </div>
         </template>
       </div>
@@ -432,17 +402,17 @@ watch(playlistId, () => {
     align-items: center;
     text-align: center;
   }
-  
+
   .playlist-cover,
   .playlist-cover-placeholder {
     width: 160px;
     height: 160px;
   }
-  
+
   .playlist-actions {
     justify-content: center;
   }
-  
+
   .playlist-name {
     font-size: 1.5rem;
   }
@@ -452,7 +422,7 @@ watch(playlistId, () => {
   .playlist-actions {
     flex-direction: column;
   }
-  
+
   .playlist-actions :deep(.va-button) {
     width: 100%;
   }
