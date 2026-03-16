@@ -1,12 +1,19 @@
 /**
  * Deezer API - BPM lookup fallback when AcousticBrainz has no data.
  * No key data from Deezer.
+ * Uses CORS proxy because Deezer API blocks direct browser requests.
  */
 
 const DEEZER_BASE = 'https://api.deezer.com'
+/** CORS proxy - Deezer blocks direct fetch from browser origins */
+const CORS_PROXY = 'https://corsproxy.io/'
 
 /** Be respectful: delay between fallback lookups (used by caller) */
 export const DEEZER_MS_DELAY = 300
+
+function proxiedUrl(url: string): string {
+  return `${CORS_PROXY}?url=${encodeURIComponent(url)}`
+}
 
 /**
  * Search Deezer by artist + title, fetch track for BPM.
@@ -20,16 +27,16 @@ export async function searchDeezerForBpm(
 
   try {
     const query = `artist:"${artist.replace(/"/g, '')}" track:"${title.replace(/"/g, '')}"`
-    const searchRes = await fetch(
-      `${DEEZER_BASE}/search?q=${encodeURIComponent(query)}&limit=1`
-    )
+    const searchUrl = `${DEEZER_BASE}/search?q=${encodeURIComponent(query)}&limit=1`
+    const searchRes = await fetch(proxiedUrl(searchUrl))
     if (!searchRes.ok) return null
 
     const searchData = await searchRes.json()
     const trackId = searchData.data?.[0]?.id
     if (!trackId) return null
 
-    const trackRes = await fetch(`${DEEZER_BASE}/track/${trackId}`)
+    const trackUrl = `${DEEZER_BASE}/track/${trackId}`
+    const trackRes = await fetch(proxiedUrl(trackUrl))
     if (!trackRes.ok) return null
 
     const track = await trackRes.json()
