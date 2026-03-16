@@ -182,12 +182,9 @@ watch(playlistId, () => {
         </button>
 
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle
-            :indeterminate="!estimationProgress"
+          <VaProgressCircle :indeterminate="!estimationProgress"
             :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
-            size="large"
-            color="primary"
-          />
+            size="large" color="primary" />
           <p v-if="estimationProgress">
             Looking up BPM from AcousticBrainz... {{ estimationProgress.done }}/{{ estimationProgress.total }}
           </p>
@@ -240,8 +237,7 @@ watch(playlistId, () => {
             </div>
           </div>
 
-          <div v-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner"
-            role="alert">
+          <div v-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner" role="alert">
             <VaIcon name="info" />
             <p>
               BPM data unavailable for some tracks (not in AcousticBrainz). Key data is not available.
@@ -249,8 +245,6 @@ watch(playlistId, () => {
           </div>
 
           <SortPreview v-if="sortStats && hasAudioFeatures" :stats="sortStats" class="sort-stats" />
-
-          <p>{{ isDraggable }}</p>
 
           <div class="tracks-section">
             <div class="tracks-tabs">

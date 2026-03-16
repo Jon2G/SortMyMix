@@ -30,7 +30,7 @@ export async function searchMusicBrainz(
   if (!artist?.trim() || !title?.trim()) return null
 
   const q = `recording:"${escapeLucene(title)}" AND artistname:"${escapeLucene(artist)}"`
-  const url = `${MUSICBRAINZ_BASE}/recording/?query=${encodeURIComponent(q)}&fmt=json&limit=5&dismax=true`
+  const url = `${MUSICBRAINZ_BASE}/recording/?query=${encodeURIComponent(q)}&fmt=json&limit=5`
 
   try {
     const res = await fetch(url, {
