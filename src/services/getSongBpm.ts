@@ -50,7 +50,11 @@ export async function searchGetSongBpm(
     api_key: GETSONGBPM_CONFIG.apiKey
   })
   const targetUrl = `${GETSONGBPM_CONFIG.baseUrl}/search/?${params.toString()}`
-  const url = `https://corsproxy.io/?${new URLSearchParams({ url: targetUrl }).toString()}`
+  const proxyParams: Record<string, string> = { url: targetUrl }
+  if (GETSONGBPM_CONFIG.corsproxyApiKey) {
+    proxyParams.key = GETSONGBPM_CONFIG.corsproxyApiKey
+  }
+  const url = `https://corsproxy.io/?${new URLSearchParams(proxyParams).toString()}`
 
   try {
     const res = await fetch(url)
