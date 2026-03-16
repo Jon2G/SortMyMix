@@ -43,12 +43,16 @@ export async function searchGetSongBpm(
   }
 
   const lookup = `song:${searchTitle.replace(/"/g, '')} artist:${artist.replace(/"/g, '')}`
-  const url = `${GETSONGBPM_CONFIG.baseUrl}/search/?type=both&lookup=${encodeURIComponent(lookup)}&limit=1`
+  const params = new URLSearchParams({
+    type: 'both',
+    lookup,
+    limit: '1',
+    api_key: GETSONGBPM_CONFIG.apiKey
+  })
+  const url = `${GETSONGBPM_CONFIG.baseUrl}/search/?${params.toString()}`
 
   try {
-    const res = await fetch(url, {
-      headers: { 'X-API-KEY': GETSONGBPM_CONFIG.apiKey }
-    })
+    const res = await fetch(url)
     if (!res.ok) {
       console.error('[GetSongBPM] Error searching for BPM:', res.statusText)
       return null
