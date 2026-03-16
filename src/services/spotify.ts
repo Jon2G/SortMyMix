@@ -110,22 +110,33 @@ class SpotifyApiService {
   async getAudioFeatures(trackIds: string[]): Promise<(SpotifyAudioFeatures | null)[]> {
     if (trackIds.length === 0) return []
     
-    // Feb 2026: Batch endpoint /audio-features?ids=... returns 403 in Dev Mode.
-    // Fetch one at a time with concurrency limit to avoid rate limits.
-    const CONCURRENCY = 5
-    const results: (SpotifyAudioFeatures | null)[] = []
-
-    for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
-      const batch = trackIds.slice(i, i + CONCURRENCY)
-      const batchResults = await Promise.all(
-        batch.map(id =>
-          this.request<SpotifyAudioFeatures>(`/audio-features/${id}`).catch(() => null)
+    // Try batch first (works in Extended Quota Mode), fall back to single requests (Dev Mode)
+    try {
+      const batchSize = 100
+      const results: (SpotifyAudioFeatures | null)[] = []
+      for (let i = 0; i < trackIds.length; i += batchSize) {
+        const batch = trackIds.slice(i, i + batchSize)
+        const response = await this.request<{ audio_features: (SpotifyAudioFeatures | null)[] }>(
+          `/audio-features?ids=${batch.join(',')}`
         )
-      )
-      results.push(...batchResults)
+        results.push(...response.audio_features)
+      }
+      return results
+    } catch {
+      // Feb 2026: Batch returns 403 in Dev Mode; use single endpoint per track
+      const CONCURRENCY = 5
+      const results: (SpotifyAudioFeatures | null)[] = []
+      for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
+        const batch = trackIds.slice(i, i + CONCURRENCY)
+        const batchResults = await Promise.all(
+          batch.map(id =>
+            this.request<SpotifyAudioFeatures>(`/audio-features/${id}`).catch(() => null)
+          )
+        )
+        results.push(...batchResults)
+      }
+      return results
     }
-
-    return results
   }
 
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {
