@@ -235,7 +235,7 @@ watch(playlistId, () => {
           />
           
           <div class="tracks-section">
-            <VaTabs v-model="activeTab" class="tracks-tabs">
+            <VaTabs v-model="activeTab" class="tracks-tabs" grow>
               <VaTab>Original Order</VaTab>
               <VaTab :disabled="!hasSorted">Sorted Order</VaTab>
             </VaTabs>
@@ -404,6 +404,11 @@ watch(playlistId, () => {
 .tracks-tabs {
   padding: 16px 16px 0;
   --va-tabs-wrapper-background: transparent;
+}
+
+.tracks-tabs :deep(.va-tab) {
+  flex: 1;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
