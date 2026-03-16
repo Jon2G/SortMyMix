@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { VaButton, VaIcon, VaProgressCircle, VaTabs, VaTab } from 'vuestic-ui'
+import { VaButton, VaIcon, VaProgressCircle } from 'vuestic-ui'
 import AppHeader from '@/components/AppHeader.vue'
 import TrackList from '@/components/TrackList.vue'
 import SortPreview from '@/components/SortPreview.vue'
@@ -239,10 +239,25 @@ watch(playlistId, () => {
           <SortPreview v-if="sortStats && hasAudioFeatures" :stats="sortStats" class="sort-stats" />
 
           <div class="tracks-section">
-            <VaTabs v-model="activeTab" class="tracks-tabs" grow>
-              <VaTab>Original</VaTab>
-              <VaTab :disabled="!hasSorted">Order</VaTab>
-            </VaTabs>
+            <div class="tracks-tabs">
+              <button
+                type="button"
+                class="tab-btn"
+                :class="{ active: activeTab === 0 }"
+                @click="activeTab = 0"
+              >
+                Original Order
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                :class="{ active: activeTab === 1 }"
+                :disabled="!hasSorted"
+                @click="hasSorted && (activeTab = 1)"
+              >
+                Sorted Order
+              </button>
+            </div>
 
             <TrackList :tracks="displayTracks" :show-position="activeTab === 0"
               :draggable="isDraggable" @reorder="sortedTracks = $event" />
@@ -404,13 +419,38 @@ watch(playlistId, () => {
 }
 
 .tracks-tabs {
+  display: flex;
+  gap: 0;
   padding: 16px 16px 0;
-  --va-tabs-wrapper-background: transparent;
+  border-bottom: 1px solid var(--color-bg-elevated);
 }
 
-.tracks-tabs :deep(.va-tab) {
+.tab-btn {
   flex: 1;
-  justify-content: center;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.tab-btn.active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-primary, #1DB954);
+}
+
+.tab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
