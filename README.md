@@ -22,6 +22,14 @@ Sort your Spotify playlists by **BPM** and **harmonic key** using the **Camelot 
 3. **Preview** the optimized order with BPM and key info
 4. **Apply** the sort to update your Spotify playlist
 
+### BPM & Key Data
+
+BPM and musical key are looked up in order:
+1. **GetSongBPM** (primary) — requires free API key from [getsongbpm.com](https://getsongbpm.com/api)
+2. **AcousticBrainz** (fallback) — free, no key needed
+
+Without a GetSongBPM key, only AcousticBrainz is used (smaller coverage).
+
 ### Sorting Algorithm
 
 Tracks are sorted using a two-pass algorithm:
@@ -53,6 +61,10 @@ Create a `.env.local` file in the project root:
 ```env
 VITE_SPOTIFY_CLIENT_ID=your_spotify_client_id
 VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173/SortMyMix/callback
+
+# Optional: GetSongBPM API key for BPM/key lookup (primary source)
+# Register at https://getsongbpm.com/api — backlink to GetSongBPM.com required
+VITE_GETSONGBPM_API_KEY=your_getsongbpm_api_key
 ```
 
 For production, you can also set the redirect URI:

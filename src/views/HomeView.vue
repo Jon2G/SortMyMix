@@ -137,6 +137,8 @@ const features = [
         <p>
           Built with Vue.js + Vuestic UI |
           <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+          |
+          <a href="https://getsongbpm.com" target="_blank" rel="noopener">BPM data by GetSongBPM</a>
         </p>
         <p class="footer-disclaimer">
           SortMyMix is not affiliated with Spotify AB

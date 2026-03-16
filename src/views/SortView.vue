@@ -6,9 +6,8 @@ import AppHeader from '@/components/AppHeader.vue'
 import TrackList from '@/components/TrackList.vue'
 import SortPreview from '@/components/SortPreview.vue'
 import { spotifyApi } from '@/services/spotify'
-import { getBpmForTracksStreaming } from '@/services/acousticBrainz'
+import { loadBpmKeyForTracks } from '@/services/bpmKeyService'
 import { useSorting } from '@/composables/useSorting'
-import { spotifyToCamelot, camelotToString } from '@/services/camelot'
 import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack } from '@/types/spotify'
 
 const route = useRoute()
@@ -75,24 +74,17 @@ async function loadPlaylistData() {
     sortedTracks.value = [...originalTracks.value]
     loadingTrackIds.value = new Set(validTracks.map(t => t.track.id))
 
-    // Load BPM/key from AcousticBrainz in background (progressive, one batch at a time)
+    // Load BPM/key in background (GetSongBPM + AcousticBrainz)
     const tracksForLookup = validTracks.map(t => ({
       id: t.track.id,
       name: t.track.name,
       artists: t.track.artists,
       duration_ms: t.track.duration_ms
     }))
-    getBpmForTracksStreaming(tracksForLookup, (trackId, features) => {
+    loadBpmKeyForTracks(tracksForLookup, (trackId, { features, camelotKey }) => {
       const idx = originalTracks.value.findIndex(t => t.track.id === trackId)
       if (idx >= 0) {
-        const track = originalTracks.value[idx]
-        const updated = {
-          ...track,
-          features,
-          camelotKey: features && features.key >= 0
-            ? camelotToString(spotifyToCamelot(features.key, features.mode))
-            : null
-        }
+        const updated = { ...originalTracks.value[idx], features, camelotKey }
         originalTracks.value = originalTracks.value.map((t, i) => (i === idx ? updated : t))
         sortedTracks.value = sortedTracks.value.map((t) =>
           t.track.id === trackId ? updated : t
@@ -236,7 +228,7 @@ watch(playlistId, () => {
           <div v-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner" role="alert">
             <VaIcon name="info" />
             <p>
-              BPM data unavailable for some tracks (not in AcousticBrainz). Key data is not available.
+              BPM and key data unavailable for some tracks.
             </p>
           </div>
 
