@@ -4,6 +4,7 @@ import type {
   SpotifyUser,
   SpotifyPlaylist,
   SpotifyPlaylistTrack,
+  SpotifyPlaylistTrackRaw,
   SpotifyAudioFeatures,
   SpotifyPaginatedResponse
 } from '@/types/spotify'
@@ -72,18 +73,27 @@ class SpotifyApiService {
 
   async getPlaylistTracks(
     playlistId: string, 
-    limit = 100, 
+    limit = 50, 
     offset = 0
   ): Promise<SpotifyPaginatedResponse<SpotifyPlaylistTrack>> {
-    return this.request<SpotifyPaginatedResponse<SpotifyPlaylistTrack>>(
-      `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}&fields=items(added_at,track(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
+    // Feb 2026: /tracks deprecated, use /items; response uses item not track
+    const raw = await this.request<SpotifyPaginatedResponse<SpotifyPlaylistTrackRaw>>(
+      `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}&fields=items(added_at,item(id,name,artists,album,duration_ms,uri,preview_url)),total,limit,offset,next`
     )
+    // Normalize item → track (Feb 2026 rename); support both for compatibility
+    return {
+      ...raw,
+      items: raw.items.map(({ added_at, item, track }) => ({
+        added_at,
+        track: item ?? track ?? null
+      }))
+    }
   }
 
   async getAllPlaylistTracks(playlistId: string): Promise<SpotifyPlaylistTrack[]> {
     const tracks: SpotifyPlaylistTrack[] = []
     let offset = 0
-    const limit = 100
+    const limit = 50
     let hasMore = true
 
     while (hasMore) {
@@ -116,8 +126,9 @@ class SpotifyApiService {
   }
 
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {
+    // Feb 2026: tracks → items
     return this.request<SpotifyPlaylist>(
-      `/playlists/${playlistId}?fields=id,name,description,images,owner,tracks(total),public,collaborative,snapshot_id`
+      `/playlists/${playlistId}?fields=id,name,description,images,owner,items(total),public,collaborative,snapshot_id`
     )
   }
 
@@ -139,7 +150,7 @@ class SpotifyApiService {
     }
 
     return this.request<{ snapshot_id: string }>(
-      `/playlists/${playlistId}/tracks`,
+      `/playlists/${playlistId}/items`,
       {
         method: 'PUT',
         body: JSON.stringify(body)

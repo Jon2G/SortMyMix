@@ -1,10 +1,13 @@
 export interface SpotifyUser {
   id: string
   display_name: string
-  email: string
+  /** Feb 2026: Removed from API response */
+  email?: string
   images: SpotifyImage[]
-  product: string
-  country: string
+  /** Feb 2026: Removed from API response */
+  product?: string
+  /** Feb 2026: Removed from API response */
+  country?: string
 }
 
 export interface SpotifyImage {
@@ -60,6 +63,13 @@ export interface SpotifyAlbum {
 export interface SpotifyPlaylistTrack {
   added_at: string
   track: SpotifyTrack | null
+}
+
+/** Raw API response - Feb 2026 renamed track → item; support both for compatibility */
+export interface SpotifyPlaylistTrackRaw {
+  added_at: string
+  item?: SpotifyTrack | null
+  track?: SpotifyTrack | null
 }
 
 export interface SpotifyAudioFeatures {

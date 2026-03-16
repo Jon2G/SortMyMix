@@ -38,6 +38,8 @@ Tracks are sorted using a two-pass algorithm:
 
 ### Spotify App Configuration
 
+> **Note (Feb 2026):** Spotify [updated Development Mode](https://developer.spotify.com/blog/2026-02-06-update-on-developer-access-and-platform-security) — Premium account, up to 5 users, and one Client ID per developer may be required for Development Mode apps.
+
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app
 3. Add `http://localhost:5173/SortMyMix/callback` as a Redirect URI (for development)
