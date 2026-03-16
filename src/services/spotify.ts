@@ -110,16 +110,19 @@ class SpotifyApiService {
   async getAudioFeatures(trackIds: string[]): Promise<(SpotifyAudioFeatures | null)[]> {
     if (trackIds.length === 0) return []
     
-    // Spotify API allows max 100 track IDs per request
-    const batchSize = 100
+    // Feb 2026: Batch endpoint /audio-features?ids=... returns 403 in Dev Mode.
+    // Fetch one at a time with concurrency limit to avoid rate limits.
+    const CONCURRENCY = 5
     const results: (SpotifyAudioFeatures | null)[] = []
 
-    for (let i = 0; i < trackIds.length; i += batchSize) {
-      const batch = trackIds.slice(i, i + batchSize)
-      const response = await this.request<{ audio_features: (SpotifyAudioFeatures | null)[] }>(
-        `/audio-features?ids=${batch.join(',')}`
+    for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
+      const batch = trackIds.slice(i, i + CONCURRENCY)
+      const batchResults = await Promise.all(
+        batch.map(id =>
+          this.request<SpotifyAudioFeatures>(`/audio-features/${id}`).catch(() => null)
+        )
       )
-      results.push(...response.audio_features)
+      results.push(...batchResults)
     }
 
     return results
