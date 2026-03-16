@@ -250,7 +250,6 @@ watch(playlistId, () => {
 
           <SortPreview v-if="sortStats && hasAudioFeatures" :stats="sortStats" class="sort-stats" />
 
-          <p>{{ isDraggable }}</p>
 
           <div class="tracks-section">
             <div class="tracks-tabs">
