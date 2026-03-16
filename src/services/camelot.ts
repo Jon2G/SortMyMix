@@ -99,6 +99,12 @@ export function camelotToString(key: CamelotKey | null): string | null {
   return `${key.number}${key.letter}`
 }
 
+/** All 24 Camelot keys for dropdowns: 1A–12A, 1B–12B */
+export const CAMELOT_OPTIONS: string[] = [
+  ...Array.from({ length: 12 }, (_, i) => `${i + 1}A`),
+  ...Array.from({ length: 12 }, (_, i) => `${i + 1}B`)
+]
+
 // Get the numeric value for sorting (0-23, where A keys are 0-11 and B keys are 12-23)
 export function getCamelotSortValue(key: CamelotKey | null): number {
   if (!key) return -1

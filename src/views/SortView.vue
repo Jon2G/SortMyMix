@@ -8,11 +8,13 @@ import SortPreview from '@/components/SortPreview.vue'
 import { spotifyApi } from '@/services/spotify'
 import { loadBpmKeyForTracks } from '@/services/bpmKeyService'
 import { useSorting } from '@/composables/useSorting'
+import { useCustomBpmKey } from '@/composables/useCustomBpmKey'
 import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack } from '@/types/spotify'
 
 const route = useRoute()
 const router = useRouter()
 const { sortByBpmThenHarmonic, calculateSortStats } = useSorting()
+const { mergeFeatures, setCustom, customTrackIds } = useCustomBpmKey()
 
 const playlistId = computed(() => route.params.playlistId as string)
 
@@ -38,7 +40,12 @@ const hasAudioFeatures = computed(() =>
 )
 
 const displayTracks = computed(() => {
-  return activeTab.value === 0 ? originalTracks.value : sortedTracks.value
+  void customTrackIds.value // reactive dependency on custom overrides
+  const base = activeTab.value === 0 ? originalTracks.value : sortedTracks.value
+  return base.map((t) => ({
+    ...t,
+    features: mergeFeatures(t.track.id, t.features)
+  }))
 })
 
 // Manual reorder on Manual Order tab (works without BPM)
@@ -109,7 +116,11 @@ function performSort() {
 
   // Use setTimeout to allow UI to update
   setTimeout(() => {
-    sortedTracks.value = sortByBpmThenHarmonic(originalTracks.value)
+    const merged = originalTracks.value.map((t) => ({
+      ...t,
+      features: mergeFeatures(t.track.id, t.features)
+    }))
+    sortedTracks.value = sortByBpmThenHarmonic(merged)
     hasSorted.value = true
     activeTab.value = 1 // Switch to sorted view
     isSorting.value = false
@@ -152,6 +163,11 @@ function resetToOriginal() {
 
 function goBack() {
   router.push({ name: 'playlists' })
+}
+
+function handleCustomUpdate(payload: { trackId: string; bpm?: number; key?: number; mode?: number }) {
+  const { trackId, ...data } = payload
+  setCustom(trackId, data)
 }
 
 onMounted(() => {
@@ -246,7 +262,9 @@ watch(playlistId, () => {
 
             <TrackList :key="'tab-' + activeTab" :tracks="displayTracks" :show-position="activeTab === 0"
               :loading-track-ids="Array.from(loadingTrackIds)" :draggable="isDraggable"
-              @reorder="sortedTracks = $event" />
+              :custom-track-ids="customTrackIds"
+              @reorder="sortedTracks = $event"
+              @custom-update="handleCustomUpdate" />
           </div>
         </template>
       </div>
