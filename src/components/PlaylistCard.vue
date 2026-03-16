@@ -16,7 +16,8 @@ const coverImage = computed(() => {
 })
 
 const trackCount = computed(() => {
-  return props.playlist.tracks?.total ?? 0
+  // Spotify /me/playlists returns items.total (not tracks.total)
+  return props.playlist.items?.total ?? props.playlist.tracks?.total ?? 0
 })
 
 function handleClick() {

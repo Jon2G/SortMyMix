@@ -26,6 +26,11 @@ export interface SpotifyPlaylist {
     total: number
     href: string
   }
+  /** Spotify API may return items instead of tracks for track count */
+  items?: {
+    total: number
+    href: string
+  }
   public: boolean
   collaborative: boolean
   snapshot_id: string
