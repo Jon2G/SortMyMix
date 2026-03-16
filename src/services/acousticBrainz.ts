@@ -1,6 +1,6 @@
 /**
- * BPM lookup via MusicBrainz + AcousticBrainz.
- * Fallback when Spotify audio-features and preview_url are unavailable (Dev Mode).
+ * BPM and key lookup via MusicBrainz + AcousticBrainz.
+ * Fallback when Spotify audio-features are unavailable (Dev Mode).
  */
 
 import type { SpotifyAudioFeatures } from '@/types/spotify'
@@ -56,14 +56,39 @@ export async function searchMusicBrainz(
   }
 }
 
+/** AcousticBrainz key string to Spotify pitch class (0-11). Spotify: 0=C, 1=C#, 2=D, ..., 11=B */
+const KEY_TO_PITCH: Record<string, number> = {
+  C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6,
+  G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11
+}
+
+function parseAcousticBrainzKey(
+  keyKey: unknown,
+  keyScale: unknown
+): { key: number; mode: number } | null {
+  const keyStr = typeof keyKey === 'string' ? keyKey.trim() : ''
+  const scaleStr = typeof keyScale === 'string' ? keyScale.toLowerCase() : ''
+  const pitch = KEY_TO_PITCH[keyStr]
+  if (pitch === undefined || pitch < 0 || pitch > 11) return null
+  const mode = scaleStr === 'minor' ? 0 : scaleStr === 'major' ? 1 : -1
+  if (mode < 0) return null
+  return { key: pitch, mode }
+}
+
+export interface AcousticBrainzFeatures {
+  bpm: number
+  key: number
+  mode: number
+}
+
 /**
- * Get BPM from AcousticBrainz for a MusicBrainz recording ID.
+ * Get BPM and key from AcousticBrainz for MusicBrainz recording IDs.
  * Uses bulk endpoint (supports up to 25 MBIDs) for efficiency.
  */
 export async function getBpmFromAcousticBrainzBulk(
   mbids: string[]
-): Promise<Map<string, number>> {
-  const result = new Map<string, number>()
+): Promise<Map<string, AcousticBrainzFeatures>> {
+  const result = new Map<string, AcousticBrainzFeatures>()
   if (mbids.length === 0) return result
 
   const batchSize = 25
@@ -81,8 +106,17 @@ export async function getBpmFromAcousticBrainzBulk(
         const key = data.mbid_mapping?.[mbid] ?? mbid.toLowerCase()
         const doc = data[key]?.['0']
         const bpm = doc?.rhythm?.bpm
+        const tonal = doc?.tonal
+        const keyKey = tonal?.key_key ?? tonal?.chords_key
+        const keyScale = tonal?.key_scale ?? tonal?.chords_scale
+        const parsedKey = parseAcousticBrainzKey(keyKey, keyScale)
+
         if (typeof bpm === 'number' && bpm > 0 && bpm < 300) {
-          result.set(mbid, bpm)
+          result.set(mbid, {
+            bpm,
+            key: parsedKey?.key ?? -1,
+            mode: parsedKey?.mode ?? 0
+          })
         }
       }
     } catch {
@@ -101,8 +135,8 @@ export interface TrackForLookup {
 }
 
 /**
- * Look up BPM for tracks via MusicBrainz + AcousticBrainz.
- * Returns Map of trackId -> SpotifyAudioFeatures (tempo only, key: -1).
+ * Look up BPM and key for tracks via MusicBrainz + AcousticBrainz.
+ * Returns Map of trackId -> SpotifyAudioFeatures (tempo and key from AcousticBrainz).
  */
 export async function getBpmForTracks(
   tracks: TrackForLookup[],
@@ -124,20 +158,20 @@ export async function getBpmForTracks(
     if (i < tracks.length - 1) await sleep(MB_MS_DELAY)
   }
 
-  // Phase 2: Batch lookup AcousticBrainz
+  // Phase 2: Batch lookup AcousticBrainz (BPM + key)
   const mbids = [...trackToMbid.values()]
-  const bpmByMbid = await getBpmFromAcousticBrainzBulk(mbids)
+  const featuresByMbid = await getBpmFromAcousticBrainzBulk(mbids)
 
   // Phase 3: Build results
   for (const t of tracks) {
     const mbid = trackToMbid.get(t.id)
-    const bpm = mbid ? bpmByMbid.get(mbid) : null
-    const features: SpotifyAudioFeatures | null = bpm
+    const ac = mbid ? featuresByMbid.get(mbid) : null
+    const features: SpotifyAudioFeatures | null = ac
       ? {
           id: t.id,
-          tempo: bpm,
-          key: -1,
-          mode: 0,
+          tempo: ac.bpm,
+          key: ac.key,
+          mode: ac.mode,
           energy: 0,
           danceability: 0,
           valence: 0,

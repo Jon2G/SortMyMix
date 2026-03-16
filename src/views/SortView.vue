@@ -26,7 +26,6 @@ const isSorting = ref(false)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
 const estimationProgress = ref<{ done: number; total: number } | null>(null)
-const tracksWithPreviewCount = ref(0)
 const activeTab = ref(0)
 const hasSorted = ref(false)
 
@@ -54,7 +53,6 @@ const hasChanges = computed(() => {
 async function loadPlaylistData() {
   isLoading.value = true
   error.value = null
-  tracksWithPreviewCount.value = 0
   estimationProgress.value = null
 
   try {
@@ -83,8 +81,6 @@ async function loadPlaylistData() {
       estimationProgress.value = { done, total }
     })
     estimationProgress.value = null
-    const successCount = [...estimated.values()].filter(Boolean).length
-    tracksWithPreviewCount.value = successCount
     estimated.forEach((features, id) => {
       if (features) featuresMap.set(id, features)
     })
@@ -244,14 +240,7 @@ watch(playlistId, () => {
             </div>
           </div>
 
-          <div v-if="tracksWithPreviewCount === 0 && originalTracks.length > 0" class="features-unavailable-banner"
-            role="alert">
-            <VaIcon name="info" />
-            <p>
-              No BPM data found in AcousticBrainz for any track. You can still manually reorder and apply.
-            </p>
-          </div>
-          <div v-else-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner"
+          <div v-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner"
             role="alert">
             <VaIcon name="info" />
             <p>

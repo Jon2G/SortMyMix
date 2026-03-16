@@ -46,7 +46,6 @@ export interface SpotifyTrack {
   album: SpotifyAlbum
   duration_ms: number
   uri: string
-  preview_url: string | null
 }
 
 export interface SpotifyArtist {
