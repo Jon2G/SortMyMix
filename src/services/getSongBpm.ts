@@ -32,9 +32,15 @@ export async function searchGetSongBpm(
   artist: string,
   title: string
 ): Promise<{ bpm: number; key: number; mode: number } | null> {
-  if (!GETSONGBPM_CONFIG.apiKey) return null
+  if (!GETSONGBPM_CONFIG.apiKey) {
+    console.error('[GetSongBPM] No API key')
+    return null
+  }
   const searchTitle = stripTrackTitleForSearch(title ?? '')
-  if (!artist?.trim() || !searchTitle) return null
+  if (!artist?.trim() || !searchTitle) {
+    console.error('[GetSongBPM] No artist or title')
+    return null
+  }
 
   const lookup = `song:${searchTitle.replace(/"/g, '')} artist:${artist.replace(/"/g, '')}`
   const url = `${GETSONGBPM_CONFIG.baseUrl}/search/?type=both&lookup=${encodeURIComponent(lookup)}&limit=1`
