@@ -29,7 +29,10 @@ export async function searchMusicBrainz(
   durationMs?: number
 ): Promise<string[]> {
   const searchTitle = stripTrackTitleForSearch(title ?? '')
-  if (!artist?.trim() || !searchTitle) return []
+  if (!artist?.trim() || !searchTitle) {
+    console.error('[AcousticBrainz] No artist or title')
+    return []
+  }
 
   const q = `recording:"${escapeLucene(searchTitle)}" AND artistname:"${escapeLucene(artist)}"`
   const url = `${MUSICBRAINZ_BASE}/recording/?query=${encodeURIComponent(q)}&fmt=json&limit=5`
@@ -38,21 +41,32 @@ export async function searchMusicBrainz(
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT }
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error('[AcousticBrainz] Error searching for BPM:', res.statusText)
+      return []
+    }
 
     const data = await res.json()
     const recordings = data.recordings as Array<{ id: string; length?: number }>
-    if (!recordings?.length) return []
+    if (!recordings?.length) {
+      console.error('[AcousticBrainz] No recordings found',searchTitle, artist)
+      return []
+    }
 
     // Sort by duration match (best first), then take up to 5
     const sorted = [...recordings].sort((a, b) => {
-      if (!durationMs) return 0
+      if (!durationMs) {return 0}
       const diffA = a.length ? Math.abs(a.length - durationMs) : Infinity
       const diffB = b.length ? Math.abs(b.length - durationMs) : Infinity
       return diffA - diffB
     })
-    return sorted.slice(0, 5).map((r) => r.id)
-  } catch {
+    const unique = [...new Set(sorted.map((r) => r.id))]
+    console.log('[AcousticBrainz] Unique MBIDs:',searchTitle, artist, unique)
+    const sliced = unique.slice(0, 5)
+    console.log('[AcousticBrainz] Sliced MBIDs:', searchTitle, artist, sliced)
+    return sliced
+  } catch (err) {
+    console.error('[AcousticBrainz] Error searching for BPM:', err)
     return []
   }
 }
