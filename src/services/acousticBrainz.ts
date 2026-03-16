@@ -180,7 +180,7 @@ export async function getBpmForTracks(
 
   for (const t of tracks) {
     const cached = getCachedFeatures(t.id)
-    if (cached !== undefined) {
+    if (cached != null) {
       results.set(t.id, cached)
     } else {
       uncachedTracks.push(t)
@@ -221,7 +221,7 @@ export async function getBpmForTracks(
       features = buildFeatures(t.id, null, bpm ?? undefined)
       await sleep(DEEZER_MS_DELAY)
     }
-    setCachedFeatures(t.id, features)
+    if (features) setCachedFeatures(t.id, features)
     results.set(t.id, features)
   }
 
@@ -245,7 +245,7 @@ export async function getBpmForTracksStreaming(
 
     for (const t of batch) {
       const cached = getCachedFeatures(t.id)
-      if (cached !== undefined) {
+      if (cached != null) {
         onTrackFeatures(t.id, cached)
       } else {
         uncached.push(t)
@@ -290,7 +290,7 @@ export async function getBpmForTracksStreaming(
         features = buildFeatures(t.id, null, bpm ?? undefined)
         await sleep(DEEZER_MS_DELAY)
       }
-      setCachedFeatures(t.id, features)
+      if (features) setCachedFeatures(t.id, features)
       onTrackFeatures(t.id, features)
     }
 
