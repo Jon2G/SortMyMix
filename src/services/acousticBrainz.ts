@@ -5,6 +5,7 @@
 
 import { getCachedFeatures, setCachedFeatures } from '@/services/bpmCache'
 import { searchDeezerForBpm, DEEZER_MS_DELAY } from '@/services/deezer'
+import { stripTrackTitleForSearch } from '@/services/trackTitle'
 import type { SpotifyAudioFeatures } from '@/types/spotify'
 
 const MUSICBRAINZ_BASE = 'https://musicbrainz.org/ws/2'
@@ -29,9 +30,10 @@ export async function searchMusicBrainz(
   title: string,
   durationMs?: number
 ): Promise<string[]> {
-  if (!artist?.trim() || !title?.trim()) return []
+  const searchTitle = stripTrackTitleForSearch(title ?? '')
+  if (!artist?.trim() || !searchTitle) return []
 
-  const q = `recording:"${escapeLucene(title)}" AND artistname:"${escapeLucene(artist)}"`
+  const q = `recording:"${escapeLucene(searchTitle)}" AND artistname:"${escapeLucene(artist)}"`
   const url = `${MUSICBRAINZ_BASE}/recording/?query=${encodeURIComponent(q)}&fmt=json&limit=5`
 
   try {
@@ -193,8 +195,7 @@ export async function getBpmForTracks(
   for (let i = 0; i < uncachedTracks.length; i++) {
     const t = uncachedTracks[i]
     const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
-    const title = t.name ?? ''
-    const mbids = await searchMusicBrainz(artist, title, t.duration_ms)
+    const mbids = await searchMusicBrainz(artist, t.name ?? '', t.duration_ms)
     if (mbids.length) trackToMbids.set(t.id, mbids)
     onProgress?.(tracks.length - uncachedTracks.length + i + 1, tracks.length)
     if (i < uncachedTracks.length - 1) await sleep(MB_MS_DELAY)
@@ -217,7 +218,8 @@ export async function getBpmForTracks(
     let features = buildFeatures(t.id, ac)
     if (!features) {
       const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
-      const bpm = await searchDeezerForBpm(artist, t.name ?? '')
+      const searchTitle = stripTrackTitleForSearch(t.name ?? '')
+      const bpm = await searchDeezerForBpm(artist, searchTitle)
       features = buildFeatures(t.id, null, bpm ?? undefined)
       await sleep(DEEZER_MS_DELAY)
     }
@@ -261,8 +263,7 @@ export async function getBpmForTracksStreaming(
     for (let j = 0; j < uncached.length; j++) {
       const t = uncached[j]
       const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
-      const title = t.name ?? ''
-      const mbids = await searchMusicBrainz(artist, title, t.duration_ms)
+      const mbids = await searchMusicBrainz(artist, t.name ?? '', t.duration_ms)
       if (mbids.length) trackToMbids.set(t.id, mbids)
       if (j < uncached.length - 1) await sleep(MB_MS_DELAY)
     }
@@ -286,7 +287,8 @@ export async function getBpmForTracksStreaming(
       let features = buildFeatures(t.id, ac)
       if (!features) {
         const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
-        const bpm = await searchDeezerForBpm(artist, t.name ?? '')
+        const searchTitle = stripTrackTitleForSearch(t.name ?? '')
+        const bpm = await searchDeezerForBpm(artist, searchTitle)
         features = buildFeatures(t.id, null, bpm ?? undefined)
         await sleep(DEEZER_MS_DELAY)
       }
