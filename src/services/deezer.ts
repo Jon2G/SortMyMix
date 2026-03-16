@@ -3,23 +3,23 @@
  * Uses the official Deezer JavaScript SDK (avoids CORS).
  * No key data from Deezer.
  */
+/// <reference types="deezer-sdk" />
 
 /** Be respectful: delay between fallback lookups (used by caller) */
 export const DEEZER_MS_DELAY = 300
 
-interface DeezerApiResponse {
+interface DeezerSearchResponse {
   data?: Array<{ id: number }>
+  error?: { message: string }
+}
+
+interface DeezerTrackResponse {
   bpm?: number
   error?: { message: string }
 }
 
-interface DeezerSDK {
-  ready: (callback: () => void) => void
-  api: (path: string, callback: (response: DeezerApiResponse) => void) => void
-}
-
-function getDZ(): DeezerSDK | undefined {
-  return typeof window !== 'undefined' ? (window as unknown as { DZ?: DeezerSDK }).DZ : undefined
+function getDZ(): DeezerSdk.DZ | undefined {
+  return typeof window !== 'undefined' ? (window as Window & { DZ?: DeezerSdk.DZ }).DZ : undefined
 }
 
 function deezerReady(): Promise<void> {
@@ -28,7 +28,7 @@ function deezerReady(): Promise<void> {
     const dz = getDZ()
     const done = () => {
       const d = getDZ()
-      if (d) d.ready(resolve)
+      if (d) d.ready(() => resolve())
       else resolve()
     }
     if (dz) return done()
@@ -42,14 +42,14 @@ function deezerReady(): Promise<void> {
   })
 }
 
-function deezerApi(path: string): Promise<DeezerApiResponse> {
+function deezerApi<T>(path: string): Promise<T> {
   return new Promise((resolve) => {
     const dz = getDZ()
     if (typeof window === 'undefined' || !dz) {
-      resolve({})
+      resolve({} as T)
       return
     }
-    dz.api(path, (response) => resolve(response))
+    dz.api(path, (response: T) => resolve(response))
   })
 }
 
@@ -70,13 +70,13 @@ export async function searchDeezerForBpm(
 
     const query = `artist:"${artist.replace(/"/g, '')}" track:"${title.replace(/"/g, '')}"`
     const searchPath = `/search?q=${encodeURIComponent(query)}&limit=1`
-    const searchData = await deezerApi(searchPath)
+    const searchData = await deezerApi<DeezerSearchResponse>(searchPath)
     if (searchData.error) return null
 
     const trackId = searchData.data?.[0]?.id
     if (!trackId) return null
 
-    const track = await deezerApi(`/track/${trackId}`)
+    const track = await deezerApi<DeezerTrackResponse>(`/track/${trackId}`)
     if (track.error) return null
 
     const bpm = track.bpm
