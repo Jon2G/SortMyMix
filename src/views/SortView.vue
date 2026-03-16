@@ -26,6 +26,7 @@ const isSorting = ref(false)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
 const estimationProgress = ref<{ done: number; total: number } | null>(null)
+const fetchProgress = ref<{ done: number; total: number } | null>(null)
 const tracksWithPreviewCount = ref(0)
 const activeTab = ref(0)
 const hasSorted = ref(false)
@@ -50,6 +51,8 @@ async function loadPlaylistData() {
   isLoading.value = true
   error.value = null
   tracksWithPreviewCount.value = 0
+  fetchProgress.value = null
+  estimationProgress.value = null
 
   try {
     // Load playlist info
@@ -64,9 +67,13 @@ async function loadPlaylistData() {
         t.track !== null
     )
 
-    // Playlist items don't include preview_url; fetch full track details from /tracks
+    // Playlist items don't include preview_url; fetch full track details via GET /tracks/{id}
     const trackIds = validTracks.map(t => t.track.id)
-    const trackDetails = await spotifyApi.getTracks(trackIds)
+    fetchProgress.value = { done: 0, total: trackIds.length }
+    const trackDetails = await spotifyApi.getTracks(trackIds, (done, total) => {
+      fetchProgress.value = { done, total }
+    })
+    fetchProgress.value = null
 
     // Estimate BPM from preview URLs (audio-features API not used)
     const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
@@ -186,10 +193,15 @@ watch(playlistId, () => {
         </button>
 
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle :indeterminate="!estimationProgress"
-            :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
-            size="large" color="primary" />
-          <p v-if="estimationProgress">
+          <VaProgressCircle :indeterminate="!fetchProgress && !estimationProgress" :model-value="fetchProgress
+            ? (fetchProgress.done / fetchProgress.total) * 100
+            : estimationProgress
+              ? (estimationProgress.done / estimationProgress.total) * 100
+              : 0" size="large" color="primary" />
+          <p v-if="fetchProgress">
+            Fetching track details... {{ fetchProgress.done }}/{{ fetchProgress.total }}
+          </p>
+          <p v-else-if="estimationProgress">
             Estimating BPM from previews... {{ estimationProgress.done }}/{{ estimationProgress.total }}
           </p>
           <p v-else>Loading playlist tracks...</p>
@@ -232,8 +244,8 @@ watch(playlistId, () => {
                   <VaIcon name="save" class="btn-icon" />
                   Apply to Spotify
                 </VaButton>
-                <VaButton v-if="hasSorted" preset="plain" size="large"
-                  :disabled="isSorting || isSaving" @click="resetToOriginal">
+                <VaButton v-if="hasSorted" preset="plain" size="large" :disabled="isSorting || isSaving"
+                  @click="resetToOriginal">
                   <VaIcon name="refresh" class="btn-icon" />
                   Reset to Original
                 </VaButton>
@@ -257,6 +269,8 @@ watch(playlistId, () => {
           </div>
 
           <SortPreview v-if="sortStats && hasAudioFeatures" :stats="sortStats" class="sort-stats" />
+
+          <p>{{ isDraggable }}</p>
 
           <div class="tracks-section">
             <div class="tracks-tabs">

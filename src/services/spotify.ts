@@ -116,30 +116,36 @@ class SpotifyApiService {
 
   /**
    * Fetch full track details including preview_url.
-   * Playlist items return simplified tracks without preview_url; this endpoint returns full Track objects.
-   * Returns empty map on 403 (GET /tracks restricted in Development Mode per Feb 2026 migration).
+   * Uses GET /tracks/{id} (single-track) per Feb 2026 migration - batch endpoint removed in Dev Mode.
    */
-  async getTracks(trackIds: string[]): Promise<Map<string, { preview_url: string | null }>> {
+  async getTracks(
+    trackIds: string[],
+    onProgress?: (done: number, total: number) => void
+  ): Promise<Map<string, { preview_url: string | null }>> {
     const result = new Map<string, { preview_url: string | null }>()
     if (trackIds.length === 0) return result
 
-    try {
-      const batchSize = 50
-      for (let i = 0; i < trackIds.length; i += batchSize) {
-        const batch = trackIds.slice(i, i + batchSize)
-        const response = await this.request<{ tracks: Array<{ id: string; preview_url: string | null } | null> }>(
-          `/tracks?ids=${batch.join(',')}&market=from_token`
-        )
-        response.tracks.forEach((track, idx) => {
-          const id = batch[idx]
-          if (track && id) {
-            result.set(id, { preview_url: track.preview_url })
+    const CONCURRENCY = 5
+    let done = 0
+
+    for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
+      const chunk = trackIds.slice(i, i + CONCURRENCY)
+      const responses = await Promise.all(
+        chunk.map(async (id) => {
+          try {
+            const track = await this.request<{ id: string; preview_url: string | null }>(
+              `/tracks/${id}?market=from_token`
+            )
+            return { id, preview_url: track.preview_url }
+          } catch {
+            return { id, preview_url: null as string | null }
+          } finally {
+            done++
+            onProgress?.(done, trackIds.length)
           }
         })
-      }
-    } catch (err) {
-      // GET /tracks returns 403 in Development Mode (batch endpoint removed Feb 2026)
-      console.warn('[Spotify] getTracks unavailable (403 in Dev Mode):', err)
+      )
+      responses.forEach(({ id, preview_url }) => result.set(id, { preview_url }))
     }
     return result
   }
