@@ -6,10 +6,10 @@ import AppHeader from '@/components/AppHeader.vue'
 import TrackList from '@/components/TrackList.vue'
 import SortPreview from '@/components/SortPreview.vue'
 import { spotifyApi } from '@/services/spotify'
-import { getBpmForTracks } from '@/services/acousticBrainz'
+import { getBpmForTracksStreaming } from '@/services/acousticBrainz'
 import { useSorting } from '@/composables/useSorting'
 import { spotifyToCamelot, camelotToString } from '@/services/camelot'
-import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack, SpotifyAudioFeatures } from '@/types/spotify'
+import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack } from '@/types/spotify'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,7 +25,7 @@ const isLoading = ref(true)
 const isSorting = ref(false)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
-const estimationProgress = ref<{ done: number; total: number } | null>(null)
+const loadingTrackIds = ref<Set<string>>(new Set())
 const activeTab = ref(0)
 const hasSorted = ref(false)
 
@@ -53,13 +53,10 @@ const hasChanges = computed(() => {
 async function loadPlaylistData() {
   isLoading.value = true
   error.value = null
-  estimationProgress.value = null
 
   try {
-    // Load playlist info
+    // Load playlist info and tracks from Spotify
     playlist.value = await spotifyApi.getPlaylist(playlistId.value)
-
-    // Load all tracks
     const playlistTracks = await spotifyApi.getAllPlaylistTracks(playlistId.value)
 
     // Filter out null tracks and get track IDs
@@ -68,37 +65,41 @@ async function loadPlaylistData() {
         t.track !== null
     )
 
-    // BPM via AcousticBrainz (MusicBrainz + AcousticBrainz lookup)
-    const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
+    // Show playlist immediately with skeleton placeholders for BPM/key
+    originalTracks.value = validTracks.map((t, index) => ({
+      track: t.track,
+      features: null,
+      camelotKey: null,
+      position: index
+    }))
+    sortedTracks.value = [...originalTracks.value]
+    loadingTrackIds.value = new Set(validTracks.map(t => t.track.id))
+
+    // Load BPM/key from AcousticBrainz in background (progressive, one batch at a time)
     const tracksForLookup = validTracks.map(t => ({
       id: t.track.id,
       name: t.track.name,
       artists: t.track.artists,
       duration_ms: t.track.duration_ms
     }))
-    estimationProgress.value = { done: 0, total: tracksForLookup.length }
-    const estimated = await getBpmForTracks(tracksForLookup, (done, total) => {
-      estimationProgress.value = { done, total }
-    })
-    estimationProgress.value = null
-    estimated.forEach((features, id) => {
-      if (features) featuresMap.set(id, features)
-    })
-
-    // Combine tracks with their features
-    originalTracks.value = validTracks.map((t, index) => {
-      const features = featuresMap.get(t.track.id) || null
-      return {
-        track: t.track,
-        features,
-        camelotKey: features && features.key >= 0
-          ? camelotToString(spotifyToCamelot(features.key, features.mode))
-          : null,
-        position: index
+    getBpmForTracksStreaming(tracksForLookup, (trackId, features) => {
+      const idx = originalTracks.value.findIndex(t => t.track.id === trackId)
+      if (idx >= 0) {
+        const track = originalTracks.value[idx]
+        const updated = {
+          ...track,
+          features,
+          camelotKey: features && features.key >= 0
+            ? camelotToString(spotifyToCamelot(features.key, features.mode))
+            : null
+        }
+        originalTracks.value = originalTracks.value.map((t, i) => (i === idx ? updated : t))
+        sortedTracks.value = sortedTracks.value.map((t) =>
+          t.track.id === trackId ? updated : t
+        )
       }
+      loadingTrackIds.value = new Set([...loadingTrackIds.value].filter(id => id !== trackId))
     })
-
-    sortedTracks.value = [...originalTracks.value]
 
   } catch (err) {
     console.error('Failed to load playlist:', err)
@@ -182,13 +183,8 @@ watch(playlistId, () => {
         </button>
 
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle :indeterminate="!estimationProgress"
-            :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
-            size="large" color="primary" />
-          <p v-if="estimationProgress">
-            Looking up BPM from AcousticBrainz... {{ estimationProgress.done }}/{{ estimationProgress.total }}
-          </p>
-          <p v-else>Loading playlist tracks...</p>
+          <VaProgressCircle :indeterminate="true" size="large" color="primary" />
+          <p>Loading playlist tracks...</p>
         </div>
 
         <div v-else-if="error" class="error-state">
@@ -257,7 +253,8 @@ watch(playlistId, () => {
             </div>
 
             <TrackList :key="'tab-' + activeTab" :tracks="displayTracks" :show-position="activeTab === 0"
-              :draggable="isDraggable" @reorder="sortedTracks = $event" />
+              :loading-track-ids="Array.from(loadingTrackIds)" :draggable="isDraggable"
+              @reorder="sortedTracks = $event" />
           </div>
         </template>
       </div>

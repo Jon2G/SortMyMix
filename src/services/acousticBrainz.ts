@@ -184,6 +184,59 @@ export async function getBpmForTracks(
   return results
 }
 
+/** Batch size for streaming (process N tracks, then emit, repeat) */
+const STREAMING_BATCH_SIZE = 3
+
+/**
+ * Look up BPM and key progressively, calling onTrackFeatures as each batch completes.
+ * Use for skeleton pattern: show playlist immediately, fill in BPM/key as data arrives.
+ */
+export async function getBpmForTracksStreaming(
+  tracks: TrackForLookup[],
+  onTrackFeatures: (trackId: string, features: SpotifyAudioFeatures | null) => void
+): Promise<void> {
+  for (let i = 0; i < tracks.length; i += STREAMING_BATCH_SIZE) {
+    const batch = tracks.slice(i, i + STREAMING_BATCH_SIZE)
+    const trackToMbid = new Map<string, string>()
+
+    // MusicBrainz search for this batch
+    for (const t of batch) {
+      const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
+      const title = t.name ?? ''
+      const mbid = await searchMusicBrainz(artist, title, t.duration_ms)
+      if (mbid) trackToMbid.set(t.id, mbid)
+      if (batch.indexOf(t) < batch.length - 1) await sleep(MB_MS_DELAY)
+    }
+
+    // AcousticBrainz for this batch's MBIDs
+    const mbids = [...trackToMbid.values()]
+    const featuresByMbid = mbids.length > 0
+      ? await getBpmFromAcousticBrainzBulk(mbids)
+      : new Map<string, AcousticBrainzFeatures>()
+
+    // Emit results for each track in batch
+    for (const t of batch) {
+      const mbid = trackToMbid.get(t.id)
+      const ac = mbid ? featuresByMbid.get(mbid) : null
+      const features: SpotifyAudioFeatures | null = ac
+        ? {
+            id: t.id,
+            tempo: ac.bpm,
+            key: ac.key,
+            mode: ac.mode,
+            energy: 0,
+            danceability: 0,
+            valence: 0,
+            time_signature: 4
+          }
+        : null
+      onTrackFeatures(t.id, features)
+    }
+
+    if (i + STREAMING_BATCH_SIZE < tracks.length) await sleep(AC_MS_DELAY)
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

@@ -8,9 +8,14 @@ import type { TrackWithFeatures } from '@/types/spotify'
 const props = defineProps<{
   tracks: TrackWithFeatures[]
   showPosition?: boolean
+  /** Track IDs currently loading BPM/key (show skeleton) */
+  loadingTrackIds?: string[]
   /** Enable drag-to-reorder (prop named to avoid conflict with vuedraggable component) */
   draggable?: boolean
 }>()
+
+const isLoadingTrack = (trackId: string) =>
+  (props.loadingTrackIds?.length ?? 0) > 0 && props.loadingTrackIds!.includes(trackId)
 
 const isDraggable = computed(() => !!props.draggable)
 
@@ -80,9 +85,13 @@ const albumImage = (track: TrackWithFeatures) => {
                 <span class="track-artist">{{ formatArtists(item) }}</span>
               </div>
             </div>
-            <span class="col-bpm">{{ formatBpm(item.features?.tempo) }}</span>
+            <span class="col-bpm">
+              <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-bpm" />
+              <template v-else>{{ formatBpm(item.features?.tempo) }}</template>
+            </span>
             <span class="col-key">
-              <CamelotBadge v-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
+              <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-key" />
+              <CamelotBadge v-else-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
                 :spotify-mode="item.features.mode" size="small" />
               <span v-else class="unknown-key">—</span>
             </span>
@@ -105,9 +114,13 @@ const albumImage = (track: TrackWithFeatures) => {
               <span class="track-artist">{{ formatArtists(item) }}</span>
             </div>
           </div>
-          <span class="col-bpm">{{ formatBpm(item.features?.tempo) }}</span>
+          <span class="col-bpm">
+            <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-bpm" />
+            <template v-else>{{ formatBpm(item.features?.tempo) }}</template>
+          </span>
           <span class="col-key">
-            <CamelotBadge v-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
+            <span v-if="isLoadingTrack(item.track.id)" class="skeleton skeleton-key" />
+            <CamelotBadge v-else-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
               :spotify-mode="item.features.mode" size="small" />
             <span v-else class="unknown-key">—</span>
           </span>
@@ -246,6 +259,36 @@ const albumImage = (track: TrackWithFeatures) => {
 
 .unknown-key {
   color: var(--color-text-muted);
+}
+
+.skeleton {
+  display: inline-block;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-highlight) 25%,
+    var(--color-bg-elevated) 50%,
+    var(--color-bg-highlight) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-bpm {
+  width: 32px;
+  height: 1em;
+  vertical-align: middle;
+}
+
+.skeleton-key {
+  width: 36px;
+  height: 20px;
+  vertical-align: middle;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @media (max-width: 640px) {
