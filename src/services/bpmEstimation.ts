@@ -5,7 +5,7 @@ const CONCURRENCY = 3
 
 /**
  * Estimate BPM from Spotify preview URL (30-second clip).
- * Fallback when audio-features API returns 403 in Development Mode.
+ * Estimates BPM from 30s preview URLs using Web Audio API.
  */
 export async function estimateBpmFromPreview(
   previewUrl: string | null,

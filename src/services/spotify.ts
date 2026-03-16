@@ -5,7 +5,6 @@ import type {
   SpotifyPlaylist,
   SpotifyPlaylistTrack,
   SpotifyPlaylistTrackRaw,
-  SpotifyAudioFeatures,
   SpotifyPaginatedResponse
 } from '@/types/spotify'
 
@@ -105,27 +104,6 @@ class SpotifyApiService {
     }
 
     return tracks
-  }
-
-  async getAudioFeatures(trackIds: string[]): Promise<(SpotifyAudioFeatures | null)[]> {
-    if (trackIds.length === 0) return []
-    
-    try {
-      const batchSize = 100
-      const results: (SpotifyAudioFeatures | null)[] = []
-      for (let i = 0; i < trackIds.length; i += batchSize) {
-        const batch = trackIds.slice(i, i + batchSize)
-        const response = await this.request<{ audio_features: (SpotifyAudioFeatures | null)[] }>(
-          `/audio-features?ids=${batch.join(',')}`
-        )
-        results.push(...response.audio_features)
-      }
-      return results
-    } catch {
-      // Feb 2026: Both batch and single /audio-features return 403 in Dev Mode.
-      // Return nulls so app still works; sorting will preserve original order.
-      return trackIds.map(() => null)
-    }
   }
 
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {

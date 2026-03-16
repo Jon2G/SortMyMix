@@ -59,33 +59,20 @@ async function loadPlaylistData() {
         t.track !== null
     )
     
-    const trackIds = validTracks.map(t => t.track.id)
-    
-    // Load audio features (returns nulls when API returns 403 in Dev Mode)
-    const audioFeatures = await spotifyApi.getAudioFeatures(trackIds)
-    
-    // Create a map of track ID to audio features
+    // Estimate BPM from preview URLs (audio-features API not used)
     const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
-    trackIds.forEach((id, index) => {
-      featuresMap.set(id, audioFeatures[index])
+    const withPreview = validTracks.map(t => ({
+      id: t.track.id,
+      preview_url: t.track.preview_url
+    }))
+    estimationProgress.value = { done: 0, total: withPreview.length }
+    const estimated = await estimateBpmForTracks(withPreview, (done, total) => {
+      estimationProgress.value = { done, total }
     })
-    
-    // Fallback: estimate BPM from preview URLs when API unavailable
-    const hasAnyFeatures = audioFeatures.some(f => f !== null)
-    if (!hasAnyFeatures) {
-      const withPreview = validTracks.map(t => ({
-        id: t.track.id,
-        preview_url: t.track.preview_url
-      }))
-      estimationProgress.value = { done: 0, total: withPreview.length }
-      const estimated = await estimateBpmForTracks(withPreview, (done, total) => {
-        estimationProgress.value = { done, total }
-      })
-      estimationProgress.value = null
-      estimated.forEach((features, id) => {
-        if (features) featuresMap.set(id, features)
-      })
-    }
+    estimationProgress.value = null
+    estimated.forEach((features, id) => {
+      if (features) featuresMap.set(id, features)
+    })
     
     // Combine tracks with their features
     originalTracks.value = validTracks.map((t, index) => {
@@ -250,8 +237,7 @@ watch(playlistId, () => {
           >
             <VaIcon name="info" />
             <p>
-              BPM and key data unavailable. The audio-features API is restricted in Spotify Development Mode.
-              <a href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes" target="_blank" rel="noopener">Apply for Extended Quota Mode</a> for full access.
+              BPM and key data unavailable for tracks without preview URLs.
             </p>
           </div>
           
