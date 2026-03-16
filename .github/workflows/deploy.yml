@@ -34,6 +34,7 @@ jobs:
         run: npm run build
         env:
           VITE_SPOTIFY_CLIENT_ID: ${{ secrets.VITE_SPOTIFY_CLIENT_ID }}
+          VITE_GETSONGBPM_API_KEY: ${{ secrets.VITE_GETSONGBPM_API_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
