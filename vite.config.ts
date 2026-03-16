@@ -78,9 +78,6 @@ export default defineConfig({
     })
   ],
   base: '/SortMyMix/',
-  server: {
-    https: true,
-  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
