@@ -16,7 +16,7 @@ const coverImage = computed(() => {
 })
 
 const trackCount = computed(() => {
-  return props.playlist.tracks.total
+  return props.playlist.tracks?.total ?? 0
 })
 
 function handleClick() {

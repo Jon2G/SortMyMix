@@ -179,7 +179,7 @@ watch(playlistId, () => {
             <div class="playlist-info">
               <h1 class="playlist-name">{{ playlist.name }}</h1>
               <p class="playlist-meta">
-                {{ playlist.tracks.total }} tracks
+                {{ playlist.tracks?.total ?? 0 }} tracks
                 <span v-if="playlist.owner">
                   &middot; by {{ playlist.owner.display_name }}
                 </span>

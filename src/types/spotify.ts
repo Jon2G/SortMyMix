@@ -22,7 +22,7 @@ export interface SpotifyPlaylist {
     id: string
     display_name: string
   }
-  tracks: {
+  tracks?: {
     total: number
     href: string
   }
