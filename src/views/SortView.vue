@@ -259,8 +259,13 @@ watch(playlistId, () => {
               </button>
             </div>
 
-            <TrackList :tracks="displayTracks" :show-position="activeTab === 0"
-              :draggable="isDraggable" @reorder="sortedTracks = $event" />
+            <TrackList
+              :key="'tab-' + activeTab"
+              :tracks="displayTracks"
+              :show-position="activeTab === 0"
+              :draggable="isDraggable"
+              @reorder="sortedTracks = $event"
+            />
           </div>
         </template>
       </div>
