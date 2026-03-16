@@ -3,6 +3,7 @@
  * Fallback when Spotify audio-features are unavailable (Dev Mode).
  */
 
+import { getCachedFeatures, setCachedFeatures } from '@/services/bpmCache'
 import { searchDeezerForBpm, DEEZER_MS_DELAY } from '@/services/deezer'
 import type { SpotifyAudioFeatures } from '@/types/spotify'
 
@@ -168,32 +169,41 @@ function buildFeatures(
 
 /**
  * Look up BPM and key for tracks via MusicBrainz + AcousticBrainz.
- * Tries multiple MBIDs per track; falls back to Deezer for BPM when AcousticBrainz has no data.
+ * Uses localStorage cache; tries multiple MBIDs per track; falls back to Deezer when AcousticBrainz has no data.
  */
 export async function getBpmForTracks(
   tracks: TrackForLookup[],
   onProgress?: (done: number, total: number) => void
 ): Promise<Map<string, SpotifyAudioFeatures | null>> {
   const results = new Map<string, SpotifyAudioFeatures | null>()
-  const trackToMbids = new Map<string, string[]>()
+  const uncachedTracks: TrackForLookup[] = []
 
-  // Phase 1: Search MusicBrainz for each track (get up to 5 MBIDs per track)
-  for (let i = 0; i < tracks.length; i++) {
-    const t = tracks[i]
+  for (const t of tracks) {
+    const cached = getCachedFeatures(t.id)
+    if (cached !== undefined) {
+      results.set(t.id, cached)
+    } else {
+      uncachedTracks.push(t)
+    }
+  }
+
+  if (uncachedTracks.length === 0) return results
+
+  const trackToMbids = new Map<string, string[]>()
+  for (let i = 0; i < uncachedTracks.length; i++) {
+    const t = uncachedTracks[i]
     const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
     const title = t.name ?? ''
     const mbids = await searchMusicBrainz(artist, title, t.duration_ms)
     if (mbids.length) trackToMbids.set(t.id, mbids)
-    onProgress?.(i + 1, tracks.length)
-    if (i < tracks.length - 1) await sleep(MB_MS_DELAY)
+    onProgress?.(tracks.length - uncachedTracks.length + i + 1, tracks.length)
+    if (i < uncachedTracks.length - 1) await sleep(MB_MS_DELAY)
   }
 
-  // Phase 2: Batch lookup AcousticBrainz (all unique MBIDs)
   const allMbids = [...new Set([...trackToMbids.values()].flat())]
   const featuresByMbid = await getBpmFromAcousticBrainzBulk(allMbids)
 
-  // Phase 3: Build results - try each track's MBIDs in order; fallback to Deezer if none have data
-  for (const t of tracks) {
+  for (const t of uncachedTracks) {
     const mbids = trackToMbids.get(t.id) ?? []
     let ac: AcousticBrainzFeatures | null = null
     for (const mbid of mbids) {
@@ -211,6 +221,7 @@ export async function getBpmForTracks(
       features = buildFeatures(t.id, null, bpm ?? undefined)
       await sleep(DEEZER_MS_DELAY)
     }
+    setCachedFeatures(t.id, features)
     results.set(t.id, features)
   }
 
@@ -222,7 +233,7 @@ const STREAMING_BATCH_SIZE = 3
 
 /**
  * Look up BPM and key progressively, calling onTrackFeatures as each batch completes.
- * Tries multiple MBIDs per track; falls back to Deezer for BPM when AcousticBrainz has no data.
+ * Uses localStorage cache; tries multiple MBIDs per track; falls back to Deezer when AcousticBrainz has no data.
  */
 export async function getBpmForTracksStreaming(
   tracks: TrackForLookup[],
@@ -230,26 +241,38 @@ export async function getBpmForTracksStreaming(
 ): Promise<void> {
   for (let i = 0; i < tracks.length; i += STREAMING_BATCH_SIZE) {
     const batch = tracks.slice(i, i + STREAMING_BATCH_SIZE)
-    const trackToMbids = new Map<string, string[]>()
+    const uncached: TrackForLookup[] = []
 
-    // MusicBrainz search for this batch (up to 5 MBIDs per track)
-    for (let j = 0; j < batch.length; j++) {
-      const t = batch[j]
+    for (const t of batch) {
+      const cached = getCachedFeatures(t.id)
+      if (cached !== undefined) {
+        onTrackFeatures(t.id, cached)
+      } else {
+        uncached.push(t)
+      }
+    }
+
+    if (uncached.length === 0) {
+      if (i + STREAMING_BATCH_SIZE < tracks.length) await sleep(AC_MS_DELAY)
+      continue
+    }
+
+    const trackToMbids = new Map<string, string[]>()
+    for (let j = 0; j < uncached.length; j++) {
+      const t = uncached[j]
       const artist = t.artists?.[0]?.name ?? t.artists?.map(a => a.name).join(', ') ?? ''
       const title = t.name ?? ''
       const mbids = await searchMusicBrainz(artist, title, t.duration_ms)
       if (mbids.length) trackToMbids.set(t.id, mbids)
-      if (j < batch.length - 1) await sleep(MB_MS_DELAY)
+      if (j < uncached.length - 1) await sleep(MB_MS_DELAY)
     }
 
-    // AcousticBrainz for all MBIDs in this batch
     const allMbids = [...new Set([...trackToMbids.values()].flat())]
     const featuresByMbid = allMbids.length > 0
       ? await getBpmFromAcousticBrainzBulk(allMbids)
       : new Map<string, AcousticBrainzFeatures>()
 
-    // Emit results - try MBIDs in order; fallback to Deezer if none have data
-    for (const t of batch) {
+    for (const t of uncached) {
       const mbids = trackToMbids.get(t.id) ?? []
       let ac: AcousticBrainzFeatures | null = null
       for (const mbid of mbids) {
@@ -267,6 +290,7 @@ export async function getBpmForTracksStreaming(
         features = buildFeatures(t.id, null, bpm ?? undefined)
         await sleep(DEEZER_MS_DELAY)
       }
+      setCachedFeatures(t.id, features)
       onTrackFeatures(t.id, features)
     }
 
