@@ -12,7 +12,6 @@ const { login } = useSpotifyAuth()
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 function handleLogin() {
-  debugger;
   if (isLoggedIn.value) {
     router.push({ name: 'playlists' })
   } else {

@@ -11,11 +11,18 @@ export async function estimateBpmFromPreview(
   previewUrl: string | null,
   trackId: string
 ): Promise<SpotifyAudioFeatures | null> {
-  if (!previewUrl) return null
+  if (!previewUrl) {
+    console.log('[BPM] estimateBpmFromPreview:', trackId, 'no preview_url')
+    return null
+  }
 
   try {
+    console.log('[BPM] estimateBpmFromPreview:', trackId, 'fetching...')
     const response = await fetch(previewUrl)
-    if (!response.ok) return null
+    if (!response.ok) {
+      console.log('[BPM] estimateBpmFromPreview:', trackId, 'fetch failed status=', response.status)
+      return null
+    }
 
     const arrayBuffer = await response.arrayBuffer()
     const audioContext = new AudioContext()
@@ -27,8 +34,12 @@ export async function estimateBpmFromPreview(
       maxTempo: 200
     })
 
-    if (!tempo || tempo < 1) return null
+    if (!tempo || tempo < 1) {
+      console.log('[BPM] estimateBpmFromPreview:', trackId, 'analyze returned invalid tempo=', tempo)
+      return null
+    }
 
+    console.log('[BPM] estimateBpmFromPreview:', trackId, 'success tempo=', Math.round(tempo))
     return {
       id: trackId,
       tempo,
@@ -39,7 +50,8 @@ export async function estimateBpmFromPreview(
       valence: 0,
       time_signature: 4
     }
-  } catch {
+  } catch (err) {
+    console.log('[BPM] estimateBpmFromPreview:', trackId, 'error:', err)
     return null
   }
 }
@@ -53,6 +65,8 @@ export async function estimateBpmForTracks(
 ): Promise<Map<string, SpotifyAudioFeatures | null>> {
   const results = new Map<string, SpotifyAudioFeatures | null>()
   let done = 0
+  const withPreview = tracks.filter(t => t.preview_url).length
+  console.log('[BPM] estimateBpmForTracks: start total=', tracks.length, 'withPreview=', withPreview)
 
   for (let i = 0; i < tracks.length; i += CONCURRENCY) {
     const batch = tracks.slice(i, i + CONCURRENCY)
@@ -67,5 +81,7 @@ export async function estimateBpmForTracks(
     batchResults.forEach(({ id, features }) => results.set(id, features))
   }
 
+  const successCount = [...results.values()].filter(Boolean).length
+  console.log('[BPM] estimateBpmForTracks: complete successCount=', successCount)
   return results
 }
