@@ -114,42 +114,6 @@ class SpotifyApiService {
     return tracks
   }
 
-  /**
-   * Fetch full track details including preview_url.
-   * Uses GET /tracks/{id} (single-track) per Feb 2026 migration - batch endpoint removed in Dev Mode.
-   */
-  async getTracks(
-    trackIds: string[],
-    onProgress?: (done: number, total: number) => void
-  ): Promise<Map<string, { preview_url: string | null }>> {
-    const result = new Map<string, { preview_url: string | null }>()
-    if (trackIds.length === 0) return result
-
-    const CONCURRENCY = 5
-    let done = 0
-
-    for (let i = 0; i < trackIds.length; i += CONCURRENCY) {
-      const chunk = trackIds.slice(i, i + CONCURRENCY)
-      const responses = await Promise.all(
-        chunk.map(async (id) => {
-          try {
-            const track = await this.request<{ id: string; preview_url: string | null }>(
-              `/tracks/${id}?market=from_token`
-            )
-            return { id, preview_url: track.preview_url }
-          } catch {
-            return { id, preview_url: null as string | null }
-          } finally {
-            done++
-            onProgress?.(done, trackIds.length)
-          }
-        })
-      )
-      responses.forEach(({ id, preview_url }) => result.set(id, { preview_url }))
-    }
-    return result
-  }
-
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {
     // Feb 2026: tracks → items
     return this.request<SpotifyPlaylist>(

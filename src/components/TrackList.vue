@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { VaIcon } from 'vuestic-ui'
 import draggable from 'vuedraggable'
 import CamelotBadge from './CamelotBadge.vue'
@@ -8,8 +8,11 @@ import type { TrackWithFeatures } from '@/types/spotify'
 const props = defineProps<{
   tracks: TrackWithFeatures[]
   showPosition?: boolean
+  /** Enable drag-to-reorder (prop named to avoid conflict with vuedraggable component) */
   draggable?: boolean
 }>()
+
+const isDraggable = computed(() => !!props.draggable)
 
 const emit = defineEmits<{
   reorder: [tracks: TrackWithFeatures[]]
@@ -46,8 +49,8 @@ const albumImage = (track: TrackWithFeatures) => {
 
 <template>
   <div class="track-list">
-    <div class="track-list-header" :class="{ 'with-drag': draggable }">
-      <span v-if="draggable" class="col-drag"></span>
+    <div class="track-list-header" :class="{ 'with-drag': isDraggable }">
+      <span v-if="isDraggable" class="col-drag"></span>
       <span class="col-num">#</span>
       <span class="col-title">Title</span>
       <span class="col-bpm">BPM</span>
@@ -56,31 +59,19 @@ const albumImage = (track: TrackWithFeatures) => {
         <VaIcon name="schedule" />
       </span>
     </div>
-    
+
     <div class="track-list-body">
-      <draggable
-        v-if="draggable"
-        v-model="list"
-        :item-key="(el: TrackWithFeatures) => el.track.id"
-        handle=".drag-handle"
-        @end="onReorder"
-        tag="div"
-        class="track-list-draggable"
-      >
+      <draggable v-if="isDraggable" v-model="list" :item-key="(el: TrackWithFeatures) => el.track.id"
+        handle=".drag-handle" @end="onReorder" tag="div" class="track-list-draggable">
         <template #item="{ element: item, index }">
-          <div class="track-row" :class="{ 'with-drag': draggable }">
-            <span v-if="draggable" class="col-drag drag-handle" aria-label="Drag to reorder">
+          <div class="track-row" :class="{ 'with-drag': isDraggable }">
+            <span v-if="isDraggable" class="col-drag drag-handle" aria-label="Drag to reorder">
               <VaIcon name="drag_indicator" />
             </span>
             <span class="col-num">{{ (index ?? 0) + 1 }}</span>
             <div class="col-title">
-              <img 
-                v-if="albumImage(item)"
-                :src="albumImage(item)" 
-                :alt="item.track.album.name"
-                class="track-image"
-                loading="lazy"
-              />
+              <img v-if="albumImage(item)" :src="albumImage(item)" :alt="item.track.album.name" class="track-image"
+                loading="lazy" />
               <div v-else class="track-image-placeholder">
                 <VaIcon name="music_note" />
               </div>
@@ -91,34 +82,21 @@ const albumImage = (track: TrackWithFeatures) => {
             </div>
             <span class="col-bpm">{{ formatBpm(item.features?.tempo) }}</span>
             <span class="col-key">
-              <CamelotBadge 
-                v-if="item.features && item.features.key >= 0"
-                :spotify-key="item.features.key"
-                :spotify-mode="item.features.mode"
-                size="small"
-              />
+              <CamelotBadge v-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
+                :spotify-mode="item.features.mode" size="small" />
               <span v-else class="unknown-key">—</span>
             </span>
             <span class="col-duration">{{ formatDuration(item.track.duration_ms) }}</span>
           </div>
         </template>
       </draggable>
-      
+
       <template v-else>
-        <div 
-          v-for="(item, index) in tracks" 
-          :key="item.track.id + '-' + index"
-          class="track-row"
-        >
+        <div v-for="(item, index) in tracks" :key="item.track.id + '-' + index" class="track-row">
           <span class="col-num">{{ showPosition ? item.position + 1 : index + 1 }}</span>
           <div class="col-title">
-            <img 
-              v-if="albumImage(item)"
-              :src="albumImage(item)" 
-              :alt="item.track.album.name"
-              class="track-image"
-              loading="lazy"
-            />
+            <img v-if="albumImage(item)" :src="albumImage(item)" :alt="item.track.album.name" class="track-image"
+              loading="lazy" />
             <div v-else class="track-image-placeholder">
               <VaIcon name="music_note" />
             </div>
@@ -129,12 +107,8 @@ const albumImage = (track: TrackWithFeatures) => {
           </div>
           <span class="col-bpm">{{ formatBpm(item.features?.tempo) }}</span>
           <span class="col-key">
-            <CamelotBadge 
-              v-if="item.features && item.features.key >= 0"
-              :spotify-key="item.features.key"
-              :spotify-mode="item.features.mode"
-              size="small"
-            />
+            <CamelotBadge v-if="item.features && item.features.key >= 0" :spotify-key="item.features.key"
+              :spotify-mode="item.features.mode" size="small" />
             <span v-else class="unknown-key">—</span>
           </span>
           <span class="col-duration">{{ formatDuration(item.track.duration_ms) }}</span>
@@ -280,38 +254,37 @@ const albumImage = (track: TrackWithFeatures) => {
     gap: 8px;
     padding: 8px 12px;
   }
-  
+
   .track-row {
     grid-template-columns: 32px 1fr 48px 48px;
     gap: 8px;
     padding: 6px 12px;
   }
-  
+
   .col-duration {
     display: none;
   }
-  
+
   .track-list-header .col-duration {
     display: none;
   }
-  
+
   .track-image {
     width: 32px;
     height: 32px;
   }
-  
+
   .track-image-placeholder {
     width: 32px;
     height: 32px;
   }
-  
+
   .track-name {
     font-size: 0.875rem;
   }
-  
+
   .track-artist {
     font-size: 0.75rem;
   }
 }
 </style>
-

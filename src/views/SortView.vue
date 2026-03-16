@@ -6,7 +6,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import TrackList from '@/components/TrackList.vue'
 import SortPreview from '@/components/SortPreview.vue'
 import { spotifyApi } from '@/services/spotify'
-import { estimateBpmForTracks } from '@/services/bpmEstimation'
+import { getBpmForTracks } from '@/services/acousticBrainz'
 import { useSorting } from '@/composables/useSorting'
 import { spotifyToCamelot, camelotToString } from '@/services/camelot'
 import type { SpotifyPlaylist, TrackWithFeatures, SpotifyPlaylistTrack, SpotifyAudioFeatures } from '@/types/spotify'
@@ -26,7 +26,6 @@ const isSorting = ref(false)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
 const estimationProgress = ref<{ done: number; total: number } | null>(null)
-const fetchProgress = ref<{ done: number; total: number } | null>(null)
 const tracksWithPreviewCount = ref(0)
 const activeTab = ref(0)
 const hasSorted = ref(false)
@@ -44,14 +43,18 @@ const displayTracks = computed(() => {
   return activeTab.value === 0 ? originalTracks.value : sortedTracks.value
 })
 
-// Manual reorder only on Sorted tab, never on Original Order
-const isDraggable = computed(() => activeTab.value === 1 && hasSorted.value)
+// Manual reorder on Manual Order tab (works without BPM)
+const isDraggable = computed(() => activeTab.value === 1)
+
+const hasChanges = computed(() => {
+  if (sortedTracks.value.length !== originalTracks.value.length) return true
+  return sortedTracks.value.some((t, i) => t.track.id !== originalTracks.value[i].track.id)
+})
 
 async function loadPlaylistData() {
   isLoading.value = true
   error.value = null
   tracksWithPreviewCount.value = 0
-  fetchProgress.value = null
   estimationProgress.value = null
 
   try {
@@ -67,31 +70,21 @@ async function loadPlaylistData() {
         t.track !== null
     )
 
-    // Playlist items don't include preview_url; fetch full track details via GET /tracks/{id}
-    const trackIds = validTracks.map(t => t.track.id)
-    fetchProgress.value = { done: 0, total: trackIds.length }
-    const trackDetails = await spotifyApi.getTracks(trackIds, (done, total) => {
-      fetchProgress.value = { done, total }
-    })
-    fetchProgress.value = null
-
-    // Estimate BPM from preview URLs (audio-features API not used)
+    // BPM via AcousticBrainz (MusicBrainz + AcousticBrainz lookup)
     const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
-    const withPreview = validTracks.map(t => ({
+    const tracksForLookup = validTracks.map(t => ({
       id: t.track.id,
-      preview_url: trackDetails.get(t.track.id)?.preview_url ?? null
+      name: t.track.name,
+      artists: t.track.artists,
+      duration_ms: t.track.duration_ms
     }))
-    const tracksWithPreview = withPreview.filter(t => t.preview_url)
-    tracksWithPreviewCount.value = tracksWithPreview.length
-    console.log('[BPM] loadPlaylistData: validTracks=', validTracks.length, 'tracksWithPreview=', tracksWithPreview.length, 'sample:', withPreview.slice(0, 3))
-    estimationProgress.value = { done: 0, total: withPreview.length }
-    const estimated = await estimateBpmForTracks(withPreview, (done, total) => {
+    estimationProgress.value = { done: 0, total: tracksForLookup.length }
+    const estimated = await getBpmForTracks(tracksForLookup, (done, total) => {
       estimationProgress.value = { done, total }
-      if (done % 5 === 0 || done === total) console.log('[BPM] progress:', done, '/', total)
     })
     estimationProgress.value = null
     const successCount = [...estimated.values()].filter(Boolean).length
-    console.log('[BPM] estimateBpmForTracks done: successCount=', successCount, 'total=', estimated.size, 'sample results:', [...estimated.entries()].slice(0, 5))
+    tracksWithPreviewCount.value = successCount
     estimated.forEach((features, id) => {
       if (features) featuresMap.set(id, features)
     })
@@ -193,16 +186,14 @@ watch(playlistId, () => {
         </button>
 
         <div v-if="isLoading" class="loading-state">
-          <VaProgressCircle :indeterminate="!fetchProgress && !estimationProgress" :model-value="fetchProgress
-            ? (fetchProgress.done / fetchProgress.total) * 100
-            : estimationProgress
-              ? (estimationProgress.done / estimationProgress.total) * 100
-              : 0" size="large" color="primary" />
-          <p v-if="fetchProgress">
-            Fetching track details... {{ fetchProgress.done }}/{{ fetchProgress.total }}
-          </p>
-          <p v-else-if="estimationProgress">
-            Estimating BPM from previews... {{ estimationProgress.done }}/{{ estimationProgress.total }}
+          <VaProgressCircle
+            :indeterminate="!estimationProgress"
+            :model-value="estimationProgress ? (estimationProgress.done / estimationProgress.total) * 100 : 0"
+            size="large"
+            color="primary"
+          />
+          <p v-if="estimationProgress">
+            Looking up BPM from AcousticBrainz... {{ estimationProgress.done }}/{{ estimationProgress.total }}
           </p>
           <p v-else>Loading playlist tracks...</p>
         </div>
@@ -244,7 +235,7 @@ watch(playlistId, () => {
                   <VaIcon name="save" class="btn-icon" />
                   Apply to Spotify
                 </VaButton>
-                <VaButton v-if="hasSorted" preset="plain" size="large" :disabled="isSorting || isSaving"
+                <VaButton v-if="hasChanges" preset="plain" size="large" :disabled="isSorting || isSaving"
                   @click="resetToOriginal">
                   <VaIcon name="refresh" class="btn-icon" />
                   Reset to Original
@@ -257,14 +248,14 @@ watch(playlistId, () => {
             role="alert">
             <VaIcon name="info" />
             <p>
-              No preview URLs available for any track in this playlist. BPM cannot be estimated.
+              No BPM data found in AcousticBrainz for any track. You can still manually reorder and apply.
             </p>
           </div>
           <div v-else-if="!hasAudioFeatures && originalTracks.length > 0" class="features-unavailable-banner"
             role="alert">
             <VaIcon name="info" />
             <p>
-              BPM and key data unavailable for tracks without preview URLs.
+              BPM data unavailable for some tracks (not in AcousticBrainz). Key data is not available.
             </p>
           </div>
 
@@ -277,9 +268,8 @@ watch(playlistId, () => {
               <button type="button" class="tab-btn" :class="{ active: activeTab === 0 }" @click="activeTab = 0">
                 Original Order
               </button>
-              <button type="button" class="tab-btn" :class="{ active: activeTab === 1 }" :disabled="!hasSorted"
-                @click="hasSorted && (activeTab = 1)">
-                Sorted Order
+              <button type="button" class="tab-btn" :class="{ active: activeTab === 1 }" @click="activeTab = 1">
+                Manual Order
               </button>
             </div>
 
