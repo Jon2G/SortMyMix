@@ -250,11 +250,13 @@ const albumImage = (track: TrackWithFeatures) => {
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   text-align: center;
+  margin: auto;
 }
 
 .col-key {
   display: flex;
   justify-content: center;
+  margin: auto;
 }
 
 .unknown-key {
@@ -264,12 +266,10 @@ const albumImage = (track: TrackWithFeatures) => {
 .skeleton {
   display: inline-block;
   border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-highlight) 25%,
-    var(--color-bg-elevated) 50%,
-    var(--color-bg-highlight) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--color-bg-highlight) 25%,
+      var(--color-bg-elevated) 50%,
+      var(--color-bg-highlight) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
@@ -287,8 +287,13 @@ const albumImage = (track: TrackWithFeatures) => {
 }
 
 @keyframes skeleton-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 640px) {
