@@ -47,6 +47,20 @@ const minorKeyToCamelot: Record<number, number> = {
   10: 12  // A# minor = 12A
 }
 
+// Parse key_of string (e.g. "A♯m", "A#m", "C", "F#") to Spotify key and mode
+export function keyOfToSpotify(keyOf: string): { key: number; mode: number } | null {
+  const s = String(keyOf ?? '').trim().replace(/\u266f/g, '#').replace(/\u266d/g, 'b')
+  const minor = /\bm$|min(?:or)?$/i.test(s)
+  const keyStr = s.replace(/\s*m$|min(?:or)?$/i, '').trim()
+  const pitchMap: Record<string, number> = {
+    C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6,
+    G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11
+  }
+  const pitch = pitchMap[keyStr]
+  if (pitch === undefined) return null
+  return { key: pitch, mode: minor ? 0 : 1 }
+}
+
 // Parse Camelot string (e.g. "8A", "5B") to Spotify key and mode
 export function camelotToSpotify(camelot: string): { key: number; mode: number } | null {
   const m = camelot.match(/^(\d{1,2})([AB])$/i)

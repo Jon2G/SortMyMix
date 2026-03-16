@@ -4,19 +4,17 @@
  */
 
 import { GETSONGBPM_CONFIG } from '@/config/getSongBpm'
-import { camelotToSpotify } from '@/services/camelot'
+import { camelotToSpotify, keyOfToSpotify } from '@/services/camelot'
 import { stripTrackTitleForSearch } from '@/services/trackTitle'
 
 /** Rate limit: GetSongBPM 3000 req/hour → ~1.2s between requests */
 export const GETSONGBPM_MS_DELAY = 1200
 
 interface GetSongBpmSearchResult {
-  song_id?: string
-  song_title?: string
-  tempo?: number
+  tempo?: number | string
   key_of?: string
   camelot?: string
-  artist?: Array<{ name?: string }>
+  artist?: Array<{ name?: string }> | { name?: string }
 }
 
 interface GetSongBpmSearchResponse {
@@ -75,9 +73,10 @@ export async function searchGetSongBpm(
       return null
     }
 
-    const bpm = first.tempo
-    if (typeof bpm !== 'number' || bpm <= 0 || bpm >= 300) {
-      console.error('[GetSongBPM] Invalid BPM:', bpm)
+    const bpmRaw = first.tempo
+    const bpm = typeof bpmRaw === 'number' ? bpmRaw : parseFloat(String(bpmRaw ?? ''))
+    if (Number.isNaN(bpm) || bpm <= 0 || bpm >= 300) {
+      console.error('[GetSongBPM] Invalid BPM:', bpmRaw)
       return null
     }
 
@@ -85,12 +84,11 @@ export async function searchGetSongBpm(
     let mode = 0
 
     const camelot = first.camelot?.trim()
-    if (camelot) {
-      const parsed = camelotToSpotify(camelot)
-      if (parsed) {
-        key = parsed.key
-        mode = parsed.mode
-      }
+    const keyOf = first.key_of?.trim()
+    const parsed = camelot ? camelotToSpotify(camelot) : keyOf ? keyOfToSpotify(keyOf) : null
+    if (parsed) {
+      key = parsed.key
+      mode = parsed.mode
     }
 
     return { bpm, key, mode }
