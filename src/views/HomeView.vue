@@ -72,7 +72,8 @@ const features = [
         <p class="hero-subtitle">
           Transform your Spotify playlists into perfectly mixed sets using
           <span class="highlight">BPM</span> and
-          <span class="highlight">harmonic key</span> sorting
+          <span class="highlight">harmonic key</span> sorting provided by <a href="https://getsongbpm.com"
+            target="_blank" rel="noopener">GetSongBPM</a>
         </p>
 
         <VaButton class="cta-button" size="large" color="primary" @click="handleLogin">
@@ -81,7 +82,7 @@ const features = [
         </VaButton>
 
         <p class="disclaimer">
-          No account required. We only read and modify playlists you select.
+          We only read and modify playlists you select.
         </p>
       </div>
     </div>
