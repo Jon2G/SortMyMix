@@ -1,22 +1,61 @@
 /**
  * Deezer API - BPM lookup fallback when AcousticBrainz has no data.
+ * Uses the official Deezer JavaScript SDK (avoids CORS).
  * No key data from Deezer.
- * Uses CORS proxy because Deezer API blocks direct browser requests.
  */
-
-const DEEZER_BASE = 'https://api.deezer.com'
-/** CORS proxy - Deezer blocks direct fetch from browser origins */
-const CORS_PROXY = 'https://corsproxy.io/'
 
 /** Be respectful: delay between fallback lookups (used by caller) */
 export const DEEZER_MS_DELAY = 300
 
-function proxiedUrl(url: string): string {
-  return `${CORS_PROXY}?url=${encodeURIComponent(url)}`
+interface DeezerApiResponse {
+  data?: Array<{ id: number }>
+  bpm?: number
+  error?: { message: string }
+}
+
+interface DeezerSDK {
+  ready: (callback: () => void) => void
+  api: (path: string, callback: (response: DeezerApiResponse) => void) => void
+}
+
+function getDZ(): DeezerSDK | undefined {
+  return typeof window !== 'undefined' ? (window as unknown as { DZ?: DeezerSDK }).DZ : undefined
+}
+
+function deezerReady(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve()
+    const dz = getDZ()
+    const done = () => {
+      const d = getDZ()
+      if (d) d.ready(resolve)
+      else resolve()
+    }
+    if (dz) return done()
+    let attempts = 0
+    const id = setInterval(() => {
+      if (getDZ() || ++attempts > 60) {
+        clearInterval(id)
+        done()
+      }
+    }, 50)
+  })
+}
+
+function deezerApi(path: string): Promise<DeezerApiResponse> {
+  return new Promise((resolve) => {
+    const dz = getDZ()
+    if (typeof window === 'undefined' || !dz) {
+      resolve({})
+      return
+    }
+    dz.api(path, (response) => resolve(response))
+  })
 }
 
 /**
  * Search Deezer by artist + title, fetch track for BPM.
+ * Uses the official Deezer JavaScript SDK.
  * Returns BPM or null.
  */
 export async function searchDeezerForBpm(
@@ -26,20 +65,20 @@ export async function searchDeezerForBpm(
   if (!artist?.trim() || !title?.trim()) return null
 
   try {
-    const query = `artist:"${artist.replace(/"/g, '')}" track:"${title.replace(/"/g, '')}"`
-    const searchUrl = `${DEEZER_BASE}/search?q=${encodeURIComponent(query)}&limit=1`
-    const searchRes = await fetch(proxiedUrl(searchUrl))
-    if (!searchRes.ok) return null
+    await deezerReady()
+    if (!getDZ()) return null
 
-    const searchData = await searchRes.json()
+    const query = `artist:"${artist.replace(/"/g, '')}" track:"${title.replace(/"/g, '')}"`
+    const searchPath = `/search?q=${encodeURIComponent(query)}&limit=1`
+    const searchData = await deezerApi(searchPath)
+    if (searchData.error) return null
+
     const trackId = searchData.data?.[0]?.id
     if (!trackId) return null
 
-    const trackUrl = `${DEEZER_BASE}/track/${trackId}`
-    const trackRes = await fetch(proxiedUrl(trackUrl))
-    if (!trackRes.ok) return null
+    const track = await deezerApi(`/track/${trackId}`)
+    if (track.error) return null
 
-    const track = await trackRes.json()
     const bpm = track.bpm
     if (typeof bpm === 'number' && bpm > 0 && bpm < 300) return bpm
     return null
