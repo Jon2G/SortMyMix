@@ -12,6 +12,7 @@ const { login } = useSpotifyAuth()
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 function handleLogin() {
+  debugger;
   if (isLoggedIn.value) {
     router.push({ name: 'playlists' })
   } else {
@@ -46,62 +47,53 @@ const features = [
         <div class="gradient-orb orb-2"></div>
         <div class="gradient-orb orb-3"></div>
       </div>
-      
+
       <div class="hero-content">
         <div class="logo-section">
           <div class="logo-icon">
             <svg viewBox="0 0 100 100" class="logo-svg">
               <defs>
                 <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color:#1DB954"/>
-                  <stop offset="100%" style="stop-color:#1ed760"/>
+                  <stop offset="0%" style="stop-color:#1DB954" />
+                  <stop offset="100%" style="stop-color:#1ed760" />
                 </linearGradient>
               </defs>
-              <circle cx="50" cy="50" r="48" fill="url(#logoGrad)"/>
+              <circle cx="50" cy="50" r="48" fill="url(#logoGrad)" />
               <g fill="#121212">
-                <rect x="25" y="30" width="8" height="40" rx="2"/>
-                <rect x="38" y="40" width="8" height="30" rx="2"/>
-                <rect x="51" y="25" width="8" height="45" rx="2"/>
-                <rect x="64" y="35" width="8" height="35" rx="2"/>
+                <rect x="25" y="30" width="8" height="40" rx="2" />
+                <rect x="38" y="40" width="8" height="30" rx="2" />
+                <rect x="51" y="25" width="8" height="45" rx="2" />
+                <rect x="64" y="35" width="8" height="35" rx="2" />
               </g>
             </svg>
           </div>
           <h1 class="hero-title">SortMyMix</h1>
         </div>
-        
+
         <p class="hero-subtitle">
-          Transform your Spotify playlists into perfectly mixed sets using 
-          <span class="highlight">BPM</span> and 
+          Transform your Spotify playlists into perfectly mixed sets using
+          <span class="highlight">BPM</span> and
           <span class="highlight">harmonic key</span> sorting
         </p>
-        
-        <VaButton 
-          class="cta-button" 
-          size="large" 
-          color="primary"
-          @click="handleLogin"
-        >
+
+        <VaButton class="cta-button" size="large" color="primary" @click="handleLogin">
           <VaIcon name="login" class="btn-icon" />
           {{ isLoggedIn ? 'Go to Playlists' : 'Connect with Spotify' }}
         </VaButton>
-        
+
         <p class="disclaimer">
           No account required. We only read and modify playlists you select.
         </p>
       </div>
     </div>
-    
+
     <section class="features">
       <div class="container">
         <h2 class="section-title">How it works</h2>
-        
+
         <div class="features-grid">
-          <div 
-            v-for="(feature, index) in features" 
-            :key="feature.title"
-            class="feature-card"
-            :style="{ animationDelay: `${index * 100}ms` }"
-          >
+          <div v-for="(feature, index) in features" :key="feature.title" class="feature-card"
+            :style="{ animationDelay: `${index * 100}ms` }">
             <div class="feature-icon">
               <VaIcon :name="feature.icon" />
             </div>
@@ -111,34 +103,26 @@ const features = [
         </div>
       </div>
     </section>
-    
+
     <section class="camelot-section">
       <div class="container">
         <h2 class="section-title">The Camelot Wheel</h2>
         <p class="section-description">
-          Professional DJs use the Camelot Wheel to mix tracks harmonically. 
-          Adjacent keys on the wheel blend seamlessly, creating smooth transitions 
+          Professional DJs use the Camelot Wheel to mix tracks harmonically.
+          Adjacent keys on the wheel blend seamlessly, creating smooth transitions
           that keep your audience moving.
         </p>
-        
+
         <div class="camelot-visual">
           <div class="camelot-ring outer-ring">
-            <div 
-              v-for="i in 12" 
-              :key="`b-${i}`" 
-              class="camelot-key major"
-              :style="{ transform: `rotate(${(i - 1) * 30}deg) translateY(-120px)` }"
-            >
+            <div v-for="i in 12" :key="`b-${i}`" class="camelot-key major"
+              :style="{ transform: `rotate(${(i - 1) * 30}deg) translateY(-120px)` }">
               {{ i }}B
             </div>
           </div>
           <div class="camelot-ring inner-ring">
-            <div 
-              v-for="i in 12" 
-              :key="`a-${i}`" 
-              class="camelot-key minor"
-              :style="{ transform: `rotate(${(i - 1) * 30}deg) translateY(-70px)` }"
-            >
+            <div v-for="i in 12" :key="`a-${i}`" class="camelot-key minor"
+              :style="{ transform: `rotate(${(i - 1) * 30}deg) translateY(-70px)` }">
               {{ i }}A
             </div>
           </div>
@@ -148,11 +132,11 @@ const features = [
         </div>
       </div>
     </section>
-    
+
     <footer class="footer">
       <div class="container">
         <p>
-          Built with Vue.js + Vuestic UI | 
+          Built with Vue.js + Vuestic UI |
           <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
         </p>
         <p class="footer-disclaimer">
@@ -221,13 +205,29 @@ const features = [
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, -30px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(30px, -30px);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.1); }
+
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
 }
 
 .hero-content {
@@ -474,19 +474,19 @@ const features = [
   .hero {
     padding: 80px 20px;
   }
-  
+
   .hero-subtitle {
     font-size: 1.125rem;
   }
-  
+
   .features {
     padding: 60px 20px;
   }
-  
+
   .section-title {
     font-size: 2rem;
   }
-  
+
   .camelot-visual {
     transform: scale(0.8);
   }

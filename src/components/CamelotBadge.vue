@@ -87,3 +87,4 @@ const sizeClass = computed(() => `badge--${props.size || 'medium'}`)
 }
 </style>
 
+

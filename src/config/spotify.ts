@@ -16,3 +16,4 @@ export const SPOTIFY_CONFIG = {
   apiBaseUrl: 'https://api.spotify.com/v1'
 }
 
+
