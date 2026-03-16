@@ -61,14 +61,13 @@ const albumImage = (track: TrackWithFeatures) => {
     </div>
 
     <div class="track-list-body">
-      <template v-if="isDraggable">
-        <draggable v-model="list" :item-key="(el: TrackWithFeatures) => el.track.id"
-          handle=".drag-handle" @end="onReorder" tag="div" class="track-list-draggable">
-          <template #item="{ element: item, index }">
-            <div class="track-row with-drag">
-              <span class="col-drag drag-handle" aria-label="Drag to reorder">
-                <VaIcon name="drag_indicator" />
-              </span>
+      <draggable v-if="isDraggable" v-model="list" :item-key="(el: TrackWithFeatures) => el.track.id"
+        handle=".drag-handle" @end="onReorder" tag="div" class="track-list-draggable">
+        <template #item="{ element: item, index }">
+          <div class="track-row" :class="{ 'with-drag': isDraggable }">
+            <span v-if="isDraggable" class="col-drag drag-handle" aria-label="Drag to reorder">
+              <VaIcon name="drag_indicator" />
+            </span>
             <span class="col-num">{{ (index ?? 0) + 1 }}</span>
             <div class="col-title">
               <img v-if="albumImage(item)" :src="albumImage(item)" :alt="item.track.album.name" class="track-image"
@@ -88,10 +87,9 @@ const albumImage = (track: TrackWithFeatures) => {
               <span v-else class="unknown-key">—</span>
             </span>
             <span class="col-duration">{{ formatDuration(item.track.duration_ms) }}</span>
-            </div>
-          </template>
-        </draggable>
-      </template>
+          </div>
+        </template>
+      </draggable>
 
       <template v-else>
         <div v-for="(item, index) in tracks" :key="item.track.id + '-' + index" class="track-row">
