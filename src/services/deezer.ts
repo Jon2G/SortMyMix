@@ -66,23 +66,39 @@ export async function searchDeezerForBpm(
 
   try {
     await deezerReady()
-    if (!getDZ()) return null
+    if (!getDZ()) {
+      console.error('[Deezer] Deezer SDK not ready')
+      return null
+    }
 
     const query = `artist:"${artist.replace(/"/g, '')}" track:"${title.replace(/"/g, '')}"`
     const searchPath = `/search?q=${encodeURIComponent(query)}&limit=1`
     const searchData = await deezerApi<DeezerSearchResponse>(searchPath)
-    if (searchData.error) return null
+    if (searchData.error) {
+      console.error('[Deezer] Error searching for BPM:', searchData.error.message)
+      return null
+    }
 
     const trackId = searchData.data?.[0]?.id
-    if (!trackId) return null
+    if (!trackId) {
+      console.error('[Deezer] No track found for BPM')
+      return null
+    }
 
     const track = await deezerApi<DeezerTrackResponse>(`/track/${trackId}`)
-    if (track.error) return null
+    if (track.error) {
+      console.error('[Deezer] Error getting track for BPM:', track.error.message)
+      return null
+    }
 
     const bpm = track.bpm
     if (typeof bpm === 'number' && bpm > 0 && bpm < 300) return bpm
-    return null
-  } catch {
+    {
+      console.error('[Deezer] Invalid BPM:', bpm)
+      return null
+    }
+  } catch (err) {
+    console.error('[Deezer] Error searching for BPM:', err)
     return null
   }
 }
