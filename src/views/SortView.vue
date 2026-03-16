@@ -64,11 +64,15 @@ async function loadPlaylistData() {
         t.track !== null
     )
 
+    // Playlist items don't include preview_url; fetch full track details from /tracks
+    const trackIds = validTracks.map(t => t.track.id)
+    const trackDetails = await spotifyApi.getTracks(trackIds)
+
     // Estimate BPM from preview URLs (audio-features API not used)
     const featuresMap = new Map<string, SpotifyAudioFeatures | null>()
     const withPreview = validTracks.map(t => ({
       id: t.track.id,
-      preview_url: t.track.preview_url
+      preview_url: trackDetails.get(t.track.id)?.preview_url ?? null
     }))
     const tracksWithPreview = withPreview.filter(t => t.preview_url)
     tracksWithPreviewCount.value = tracksWithPreview.length

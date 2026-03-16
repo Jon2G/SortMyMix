@@ -106,6 +106,30 @@ class SpotifyApiService {
     return tracks
   }
 
+  /**
+   * Fetch full track details including preview_url.
+   * Playlist items return simplified tracks without preview_url; this endpoint returns full Track objects.
+   */
+  async getTracks(trackIds: string[]): Promise<Map<string, { preview_url: string | null }>> {
+    const result = new Map<string, { preview_url: string | null }>()
+    if (trackIds.length === 0) return result
+
+    const batchSize = 50
+    for (let i = 0; i < trackIds.length; i += batchSize) {
+      const batch = trackIds.slice(i, i + batchSize)
+      const response = await this.request<{ tracks: Array<{ id: string; preview_url: string | null } | null> }>(
+        `/tracks?ids=${batch.join(',')}&market=from_token`
+      )
+      response.tracks.forEach((track, idx) => {
+        const id = batch[idx]
+        if (track && id) {
+          result.set(id, { preview_url: track.preview_url })
+        }
+      })
+    }
+    return result
+  }
+
   async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {
     // Feb 2026: tracks → items
     return this.request<SpotifyPlaylist>(
