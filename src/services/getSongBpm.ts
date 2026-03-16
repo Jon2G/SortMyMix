@@ -43,16 +43,28 @@ export async function searchGetSongBpm(
     const res = await fetch(url, {
       headers: { 'X-API-KEY': GETSONGBPM_CONFIG.apiKey }
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[GetSongBPM] Error searching for BPM:', res.statusText)
+      return null
+    }
 
     const data = (await res.json()) as GetSongBpmSearchResponse
-    if (data.error) return null
+    if (data.error) {
+      console.error('[GetSongBPM] Error searching for BPM:', data.error)
+      return null
+    }
 
     const first = data.search?.[0]
-    if (!first) return null
+    if (!first) {
+      console.error('[GetSongBPM] No results found')
+      return null
+    }
 
     const bpm = first.tempo
-    if (typeof bpm !== 'number' || bpm <= 0 || bpm >= 300) return null
+    if (typeof bpm !== 'number' || bpm <= 0 || bpm >= 300) {
+      console.error('[GetSongBPM] Invalid BPM:', bpm)
+      return null
+    }
 
     let key = -1
     let mode = 0
@@ -67,7 +79,8 @@ export async function searchGetSongBpm(
     }
 
     return { bpm, key, mode }
-  } catch {
+  } catch (err) {
+    console.error('[GetSongBPM] Error searching for BPM:', err)
     return null
   }
 }
