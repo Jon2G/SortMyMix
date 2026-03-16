@@ -118,7 +118,7 @@ export function loadBpmKeyForTracks(
           const fallbackResults = await getBpmFromAcousticBrainzForTracks(needFallback)
           for (const t of needFallback) {
             const features = fallbackResults.get(t.id) ?? null
-            setCachedFeatures(t.id, features)
+            if (features) setCachedFeatures(t.id, features)
             onTrackUpdate(t.id, {
               features,
               camelotKey: toCamelotKey(features)

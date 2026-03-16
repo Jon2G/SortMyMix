@@ -187,7 +187,7 @@ Apply wherever cache is checked.
 | API key set, neither has data | ✗ null | ✗ null | `features: null` |
 | No API key | skipped | ✓ hit | BPM + key from AcousticBrainz |
 | Cached (object) | - | - | Use cache, no fetch |
-| Cached (null) | - | - | Use cache, no fetch (after Fix 1) |
+| No data (null) | - | - | Not cached; retry on next load |
 
 ---
 

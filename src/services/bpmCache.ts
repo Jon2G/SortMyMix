@@ -30,18 +30,21 @@ function saveCache(cache: Record<string, CacheEntry>): void {
 
 /**
  * Get cached features for a track.
- * Returns undefined if not cached, or the cached value (features or null for "no data").
+ * Returns undefined if not cached, or the cached features object.
  */
 export function getCachedFeatures(trackId: string): SpotifyAudioFeatures | null | undefined {
   const cache = loadCache()
   if (!(trackId in cache)) return undefined
+  if (cache[trackId] == null) return undefined
   return cache[trackId]
 }
 
 /**
- * Store features for a track. Pass null to cache "no data" and avoid future lookups.
+ * Store features for a track. Only stores when features is non-null.
+ * Null/empty results are not cached (will retry lookup on next load).
  */
 export function setCachedFeatures(trackId: string, features: SpotifyAudioFeatures | null): void {
+  if (features == null) return
   const cache = loadCache()
   cache[trackId] = features
   saveCache(cache)
